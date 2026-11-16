@@ -15,7 +15,7 @@
 | Skills | 原回执对账 | 区分原任务、结果版本、已读 ACK 和业务验收；未知先查原件 | 首期设计 |
 | Skills | 派发与故障处置 | 下发前核授权；有在途先对账；不自动跨项目、重派、停止或重跑 | 后续设计 |
 
-插件打包时再创建 manifest、MCP 连接配置、`skills/<name>/SKILL.md`、`mcp/` 服务实现、样本和测试。现阶段不存在这些可执行组件。可先用离线 fixture 验证工具，再用相同契约替换为真实只读后端。云端宿主、安装方式和远程 MCP 传输待验证，不假定本地 stdio 即可在云端 Dot 使用。
+插件打包时再创建 manifest、MCP 连接配置、`skills/<name>/SKILL.md`、`mcp/` 服务实现、样本和测试。目前已提供 [Multica 后端 Skill](../skills/multica-backend/SKILL.md) 及参考文档，没有 MCP 服务、可安装插件清单或运行配置。首批工具边界以 [v0.2 接入决策](backend-integration.md) 为准。可先用离线 fixture 验证工具，再用相同契约替换为真实只读后端。云端宿主、安装方式和远程 MCP 传输待验证，不假定本地 stdio 即可在云端 Dot 使用。
 
 ## 请求与证据契约
 
