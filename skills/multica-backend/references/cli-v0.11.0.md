@@ -94,7 +94,7 @@
 | `multica issue comment list <issue-id>` | R* |
 | `multica issue comment resolve <comment-id>` | W |
 | `multica issue comment unresolve <comment-id>` | W |
-| `multica issue comment update <comment-id>` | W |
+| `multica issue comment update <comment-id>` | X |
 | `multica issue create` | X |
 | `multica issue delete <id>...` | D |
 | `multica issue get <id>` | R |
@@ -135,6 +135,8 @@
 | `multica issue wakeup runs <issue-id> <wakeup-id>` | R |
 | `multica issue wakeup trigger <issue-id> <wakeup-id>` | X |
 | `multica issue wakeup update <issue-id> <wakeup-id>` | X |
+
+修改评论正文会取消该评论触发的相关在途 Run，并可能按新正文重新派发。编辑前核对评论触发的 Run 和本次授权。[取消旧 Run](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/comment.go#L3567-L3609) · [重新触发](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/comment.go#L3647-L3662)
 
 ### `multica issue-status`
 
