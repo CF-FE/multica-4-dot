@@ -2,7 +2,7 @@
 
 在 Multica 新建或调整智能体时，用本文选主机、运行时、工具和验收任务。角色职责取自 Herdr 角色库，宿主能力以目标机器上的实测为准。本文是本仓库的选型主文档，后续直接更新同一文件。当前范围为 `cloud-work` 的 mac-work 和 win-work，按项目约定暂不纳入 Claude。基线为 Multica v0.10.0，最近核对日期为 2026-11-18，本文时间均为北京时间。[角色库索引（1.0.3）](https://github.com/CF-FE/herdr-4-codexcloud/blob/742ab342355b32b70e2bac5ab8cc64290d56e23b/docs/worker-library/roles/index.json)
 
-**快速索引**　[按岗位选](#从角色要交付的结果开始) · [两端版本与实测](#两端实际登记的运行时) · [按架构问题查](#架构比较) · [速度与 Token](#速度与-token) · [推荐分工](#推荐分工与换选条件) · [创建与验收](#建一个可以验收的角色) · [按来源查](#资料索引) · [新增或升级](#新增升级或停用时怎样更新本文)
+**快速索引**　[按岗位选](#从角色要交付的结果开始) · [两端版本与实测](#两端实际登记的运行时) · [按架构问题查](#架构比较) · [速度与 Token](#速度与-token) · [实际推理档位](#实际推理档位) · [推荐分工](#推荐分工与换选条件) · [创建与验收](#建一个可以验收的角色) · [按来源查](#资料索引) · [新增或升级](#新增升级或停用时怎样更新本文)
 
 **按 Harness 查**　[Codex](#codex) · [Kimi](#kimi) · [OMP / Oh My Pi](#omp) · [DSH / DeepSeek Harness](#dsh) · [Hermes](#hermes)
 
@@ -22,7 +22,7 @@
 
 ## 两端实际登记的运行时
 
-2026-11-18 17:55 从 Multica CLI 读回运行时、启动入口和角色绑定。下表七个组合当时均为 `online`。点击 Web 中原任务卡的 Runs、工具活动和附件可复核案例。Hermes 的本机会话证据见接入方案。
+2026-11-18 17:55 从 Multica CLI 读回运行时、启动入口和角色绑定。下表七个组合当时均为 `online`。截至 11 月 20 日，mac-work Kimi、win-work Kimi 和 win-work Hermes 均有新的 Multica ACP Run，模型、档位及回执见[实际推理档位](#实际推理档位)。在原任务卡的 Runs、工具活动和附件可核对各次证据。
 
 | 主机 | Harness 与版本 | Multica 启动入口 | 当前已证实的最高层级 |
 |---|---|---|---|
@@ -83,6 +83,23 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 **选型取舍。** Hermes 适合跨会话故障分诊、交接和知识维护。win-work CLI 新会话首轮自动注入 15 条记忆、零工具调用答对既有案例，两库按 ID 读回及召回也已实测。首次探测虽已注入，模型仍误报未召回，所以验收要看实际送给模型的上下文和引用。代价是同时涉及本机历史、profile、外部 bank 及工具后端。关闭 Hindsight 整段会话自动留存后，Hermes 仍有本机会话历史。当前终端后端为 local，系统权限来自宿主账户。已有 Multica 调度的角色可先走现有 ACP 入口，真实派发尚待验收。Gateway 常驻、故障恢复和后台形成 Skills 各需专门验证。[各端接入与原始回执定位](win-work-hindsight.md#验收) · [原生后台复盘的工具范围](https://github.com/NousResearch/hermes-agent/blob/3ef6bbd201263d354fd83ec55b3c306ded2eb72a/agent/background_review.py#L809-L833)
 
 **周期任务与经验复用。** 固定发布线中的后台复盘要累积到配置阈值、能使用技能管理工具，并取得完整且未被中断的回复，才有机会创建或修订 Skill。可重复的巡检、历史分诊、个人稳定偏好、跨渠道交接各有收益。临时故障只有经过再次复现才适宜固化成步骤。Gateway 投递账本可重投已完成的回复，必要时以业务 ID 去重。创建 Skill、下次加速、任务完成、消息送达需要各自的证据。[发布线复盘实现](https://github.com/NousResearch/hermes-agent/blob/3ef6bbd201263d354fd83ec55b3c306ded2eb72a/agent/turn_finalizer.py) · [官方 Cron](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron) · [结果投递账本](https://github.com/NousResearch/hermes-agent/blob/3ef6bbd201263d354fd83ec55b3c306ded2eb72a/gateway/delivery_ledger.py)
+
+## 实际推理档位
+
+2026-11-20 在 `cloud-work` 逐一读回了 12 个角色，包括本次使用的 Mac Kimi 验证角色。全部角色的 `thinking_level` 均为空。Multica v0.11.0 将空值解释为继承运行时默认；模型选择和推理档位可以分别设置。下表把云端 Dot 查到的上游默认值与实际 Run 对照。角色创建者可用前者做初估，用后者说明某次任务实际采用了什么。
+
+| 主机与 Harness | 角色留空时的参考 | 本项目观察到的档位与证据 |
+|---|---|---|
+| win-work · Hermes | 官方文档中常见缺省为 `medium`，实际受模型覆盖、provider 和版本影响。该版 Multica 的 Hermes 适配器没有可选的角色级 effort 档位。 | **`high`**。CLOU-16 的新 ACP 会话使用 `gpt-6.2-sol`。`session.info` 同时记录 `reasoning_effort=high` 和 `reasoning_effort_wire=high`，两者均为运行时解析值。该 Run 没有独立的上游请求体。[Hermes 官方配置](https://hermes-agent.nousresearch.com/docs/user-guide/configuration#reasoning-effort) |
+| win-work · Kimi | 官方 K2.8 Preview 在开启 thinking 且调用未传 effort 时默认为 `max`，K3、K3.1 Pro 默认为 `high`。自定义端点按其模型配置解析。 | **`max`**。CLOU-18 的宿主初始绑定 `local-gpt/gpt-6.2-sol`，随后会话选择了 `kimi-code/kimi-for-coding`。`config.update` 与用量记录可核对模型，会话档位为 `max`。逐请求的推理字段未记录。[Kimi 官方模型表](https://www.kimi.com/code/docs/en/kimi-code/models.html) |
+| mac-work · Kimi | 使用同一套 Kimi 规则。换模型时按模型 ID 查默认档位。 | **`max`**。CLOU-17 的宿主配置指向 `kimi-code/kimi-for-coding`（K2.8 Preview），本次新会话也读到 `thinking_effort=max`。逐请求的推理字段未记录。[Kimi 适配器](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/pkg/agent/kimi.go#L349-L382) |
+| win-work · OMP | 18.22.2 的 `defaultThinkingLevel` 缺省为 **`high`**。配置、模型选择器后缀、模型能力或显式 `--thinking` 会影响取值。 | **运行档位未知**。默认模型验证和近期运维 Run 有 thinking 事件，未找到具体档位字段。[对应版本设置](https://github.com/can1357/oh-my-pi/blob/v18.22.2/docs/settings.md#thinking) · [Multica 启动参数](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/pkg/agent/pi.go#L1228-L1240) |
+| win-work · DSH | 0.2.2-rc.3 的内置 DeepSeek provider 默认 **`high`**。使用其他 provider 时查看实际模型在专用 profile 中公布的 `default_level` 和支持的档位。 | **运行档位未知**。已查的默认模型验证和 DSH 任务记录没有给出有效档位。[固定 RC 的 DeepSeek provider](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.2-rc.3/packages/llm/llm-deepseek/README.md) · [Multica 适配器](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/pkg/agent/dsh.go#L432-L468) |
+| mac-work / win-work · Codex | 可用档位取决于运行时和选中模型的目录。 | **运行档位未知**。Mac 审查员的已完成 Run 未提供具体 effort；Windows Codex 在本次盘点中没有绑定角色可供核对。 |
+
+**查原始证据。** 在 Multica 的「Multica 运行时验证」项目中查看 CLOU-16 的 Run `01a1f6e9-96be-735c-b31a-fdf0255eec92`、CLOU-17 的 Run `01a1f6e5-81f5-75b7-99b2-244fc6e2e8e6` 和 CLOU-18 的 Run `01a1f6eb-8670-7886-a598-133fcc335a10`。在 Hindsight 的 `multica-4-dot` bank 中，云端 Dot 的原始调查 ID 为 `multica-v0-11-0-harness-thinking-defaults-2026-11-20`，本次合并回执 ID 为 `multica-harness-effective-thinking-levels-20261120`。
+
+**用于估算 Token。** 先固定模型及 provider，再分别记录角色覆盖值、宿主默认值、会话解析值和供应商请求字段；缺哪层就注明哪层。原生默认 `high` 不能直接填进某次 Run 的实测栏。跨 provider 的同名档位也不能折算为固定 Token 数，费用估算使用对应模型、端点和工作负载的实际用量。
 
 ## 速度与 Token
 
@@ -164,3 +181,4 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 |---|---|
 | 2026-11-18 | 首版。基于 Multica v0.10.0 双端登记、CLOU-1 至 CLOU-3、CLOU-5 至 CLOU-10 与 Hermes 本机会话。 |
 | 2026-11-18 | 增补五种执行架构、角色选型取舍、按问题与来源检索，记录 Hermes 文章与实装的版本差异、两项公开性能实验与换选条件。 |
+| 2026-11-20 | 整合云端 Dot 的原生默认档位调查与 CLOU-16、17、18 的新会话证据，补入按主机对照和 Token 估算口径。 |
