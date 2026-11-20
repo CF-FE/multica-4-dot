@@ -212,10 +212,10 @@ class Mailbox:
             raise MailboxError("payload_hash_mismatch")
         return job
 
-    def verify_job(self, *, job_id, payload_hash, workspace_id, project_id, recipient) -> dict:
+    def verify_job(self, *, job_id, payload_hash, instance_id, workspace_id, project_id, coordinator_id, recipient) -> dict:
         """Verify the frozen job reference before an already authorized native dispatch."""
         if (not _matches(_ID, job_id) or not _matches(_SHA256, payload_hash)
-                or not all(_text(value) for value in (workspace_id, project_id, recipient))):
+                or not all(_text(value) for value in (instance_id, workspace_id, project_id, coordinator_id, recipient))):
             raise MailboxError("invalid_input")
         job = self._read_job(self._session(), job_id)
         payload = job["payload"]
@@ -223,7 +223,9 @@ class Mailbox:
             raise MailboxError("payload_hash_mismatch")
         target = payload.get("target")
         if (not isinstance(target, dict) or target.get("workspace_id") != workspace_id
-                or target.get("project_id") != project_id):
+                or target.get("project_id") != project_id
+                or ("instance_id" in target and target["instance_id"] != instance_id)
+                or ("agent_id" in target and target["agent_id"] != coordinator_id)):
             raise MailboxError("target_mismatch")
         if payload["recipient"] != recipient:
             raise MailboxError("recipient_mismatch")

@@ -86,6 +86,26 @@ def _match_id(obj, field, expected, check):
         raise MulticaAPIError(check, code, field=field)
 
 
+def _verify_run_scope(row, *, issue_id, workspace_id, project_id, seen):
+    if not isinstance(row, dict):
+        raise MulticaAPIError("runs", "schema_drift")
+    run_id = _uuid(row.get("id"), "runs", "id")
+    _match_id(row, "issue_id", issue_id, "runs")
+    _match_id(row, "workspace_id", workspace_id, "runs")
+    # v0.11.0 omits project_id in timeline rows; if emitted, it must agree.
+    if "project_id" in row:
+        _match_id(row, "project_id", project_id, "runs")
+    restricted = row.get("restricted", False)
+    if not isinstance(restricted, bool):
+        raise MulticaAPIError("runs", "schema_drift", field="restricted")
+    if restricted:
+        raise MulticaAPIError("runs", "restricted_run", field="restricted")
+    if run_id in seen:
+        raise MulticaAPIError("runs", "duplicate_run", field="id")
+    seen.add(run_id)
+    return run_id
+
+
 def _status(obj, check):
     status = obj.get("status")
     if not isinstance(status, str) or not status.strip():
@@ -224,22 +244,8 @@ class MulticaAPI:
         runs = []
         seen = set()
         for row in rows:
-            if not isinstance(row, dict):
-                raise MulticaAPIError("runs", "schema_drift")
-            run_id = _uuid(row.get("id"), "runs", "id")
-            _match_id(row, "issue_id", issue.id, "runs")
-            _match_id(row, "workspace_id", issue.workspace_id, "runs")
-            # v0.11.0 omits project_id in timeline rows; if emitted, it must agree.
-            if "project_id" in row:
-                _match_id(row, "project_id", issue.project_id, "runs")
-            restricted = row.get("restricted", False)
-            if not isinstance(restricted, bool):
-                raise MulticaAPIError("runs", "schema_drift", field="restricted")
-            if restricted:
-                raise MulticaAPIError("runs", "restricted_run", field="restricted")
-            if run_id in seen:
-                raise MulticaAPIError("runs", "duplicate_run", field="id")
-            seen.add(run_id)
+            run_id = _verify_run_scope(row, issue_id=issue.id, workspace_id=issue.workspace_id,
+                                       project_id=issue.project_id, seen=seen)
             runs.append(Run(run_id, issue.id, issue.workspace_id, issue.project_id,
                             _status(row, "runs"), _completed_at(row)))
         return runs

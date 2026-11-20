@@ -32,6 +32,7 @@ class NativeHTTP:
 
     def request(
         self, method: str, path: str, *, workspace_id: str | None = None, body: Any = None,
+        incomplete_headers: tuple[str, ...] = (),
     ) -> Any:
         """Return parsed JSON or None for an empty 2xx. Never retry or follow redirects."""
         if (
@@ -69,7 +70,7 @@ class NativeHTTP:
                     raw = response.read(_RESPONSE_LIMIT + 1)
                     if len(raw) > _RESPONSE_LIMIT:
                         raise NativeHTTPError("request", "response_too_large")
-                    if response.length:
+                    if response.length or any(response.getheader(name) is not None for name in incomplete_headers):
                         raise NativeHTTPError("request", "incomplete_response")
         except TimeoutError:
             raise NativeHTTPError("request", "timeout") from None

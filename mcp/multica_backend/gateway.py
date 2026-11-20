@@ -12,7 +12,7 @@ from uuid import UUID
 from jsonschema import Draft202012Validator, FormatChecker
 
 from .action_journal import ActionConflict
-from .delivery import DeliveryLedger, DispatchCommand, NewIssue, RequestConflict, UnverifiedIssue
+from .delivery import DeliveryLedger, DispatchCommand, HistoricalIssueUnverified, NewIssue, RequestConflict, UnverifiedIssue
 from .mailbox import Mailbox, MailboxError
 from .multica_api import MulticaAPI, MulticaAPIError, _parse_origin
 from .native_dispatch import MulticaDispatch
@@ -60,6 +60,8 @@ TOOL_CATALOG = [
     _tool("get_run", "Read a specific Run of a verified Issue.", _schema({**_SCOPE, "issue_id": _ID, "run_id": _ID}, *_SCOPE, "issue_id", "run_id")),
     _tool("dispatch_issue", "Create and assign a project Issue, or link an existing Issue without starting it. Reuse the original request ID on retry.", _DISPATCH, read=False),
     _tool("get_dispatch", "Look up the authenticated caller's dispatch receipt.", _schema(_RECEIPT, *_RECEIPT)),
+    _tool("get_dispatch_acceptance", "Read the coordinator's native acceptance and independent Run startup evidence for the original Mailbox dispatch.",
+          _schema({**_RECEIPT, "job_id": _text()}, *_RECEIPT, "job_id")),
     _tool("get_dispatch_result", "Read a linked Mailbox result version and its read acknowledgement.", _schema({**_RECEIPT, "version": {"type":"integer", "minimum":1}}, *_RECEIPT, "version")),
 ]
 
@@ -186,10 +188,19 @@ class Gateway:
             if not command.mailbox_payload_hash or not command.mailbox_recipient:
                 raise GatewayError("original_job_binding_unverified")
             original = self._mailbox().verify_job(job_id=command.mailbox_job_id, payload_hash=command.mailbox_payload_hash,
+                                                  instance_id=command.instance_id, coordinator_id=command.coordinator_id,
                                                   workspace_id=command.workspace_id, project_id=command.project_id,
                                                   recipient=command.mailbox_recipient)
             if command.new_issue is not None and original["latest_result_version"] > 0:
                 raise GatewayError("mailbox_job_already_reported")
+
+    @staticmethod
+    def _dispatch_adapter(instance, workspace, instance_id):
+        http = NativeHTTP(origin=instance.origin, token=instance.token, allow_private_http=instance.allow_private_http)
+        return MulticaDispatch(http, instance_id=instance_id, expected_user_id=instance.expected_user_id,
+                               correlation_property_id=workspace.correlation_property_id,
+                               mailbox_property_id=workspace.mailbox_property_id,
+                               legacy_mailbox_property_id=workspace.legacy_mailbox_property_id)
 
     def _deliver(self, principal, request_id, command):
         instance, workspace = self._scope(principal, command.instance_id, command.workspace_id)
@@ -203,15 +214,37 @@ class Gateway:
         self._reader(instance, command.workspace_id, command.project_id).get_project()
         if current is not None and current.state == "confirmed":
             return asdict(self.ledger.accept(principal, request_id, command))
-        if current is None or current.state == "accepted":
+        if current is None or (current.state == "accepted"
+                               and not self.ledger.intake_binding(principal, request_id).get("hold_reason")):
             self._verify_link(command)
-        http = NativeHTTP(origin=instance.origin, token=instance.token, allow_private_http=instance.allow_private_http)
-        markers = {"mailbox_property_id": workspace.mailbox_property_id}
-        if workspace.legacy_mailbox_property_id:
-            markers["legacy_mailbox_property_id"] = workspace.legacy_mailbox_property_id
-        native = MulticaDispatch(http, instance_id=command.instance_id, expected_user_id=instance.expected_user_id,
-                                 correlation_property_id=workspace.correlation_property_id, **markers)
+        native = self._dispatch_adapter(instance, workspace, command.instance_id)
         return asdict(self.ledger.deliver(principal, request_id, command, native))
+
+    def _intake_view(self, principal, request_id, delivery, link, native):
+        binding = self.ledger.intake_binding(principal, request_id)
+        coordinator_id = binding.get("coordinator_id")
+        candidate_issue_id = None
+        run = {"state": "unconfirmed"}
+        if coordinator_id is None:
+            acceptance = {"state": "unconfirmed", "reason": "frozen_coordinator_unavailable"}
+        elif delivery.issue is None:
+            acceptance = {"state": "unconfirmed", "reason": binding.get("hold_reason") or "issue_unconfirmed"}
+            pending = self.ledger.get_command(principal, request_id)
+            candidate_issue_id = binding.get("candidate_issue_id") or (pending.original_issue_id if pending else None)
+        else:
+            command = DispatchCommand(delivery.instance_id, delivery.workspace_id, delivery.project_id, coordinator_id,
+                                      original_issue_id=delivery.issue.issue_id, mailbox_project_id=link["project_id"],
+                                      mailbox_job_id=link["job_id"], mailbox_payload_hash=link["payload_hash"],
+                                      mailbox_recipient=link["recipient"])
+            acceptance, run = native.inspect_intake(command, delivery.issue, delivery.correlation)
+        view = {"request_id": request_id, "job_id": link["job_id"], "payload_hash": link["payload_hash"],
+                "coordinator_id": coordinator_id, "dispatch_state": delivery.state,
+                "issue": asdict(delivery.issue) if delivery.issue else None,
+                "candidate_issue_id": candidate_issue_id,
+                "acceptance": acceptance, "run": run}
+        if acceptance["state"] == "unconfirmed":
+            view["follow_up"] = {"principal": principal, "next_check": "read_original_issue_and_coordinator_receipt"}
+        return view
 
     def call(self, principal: str, name: str, arguments: dict) -> dict:
         try:
@@ -220,6 +253,8 @@ class Gateway:
             return {"error": {"code": exc.code}}
         except (RequestConflict, ActionConflict):
             return {"error": {"code": "request_conflict"}}
+        except HistoricalIssueUnverified as exc:
+            return {"error": {"check": "issue_lookup", "code": exc.code, "source": "multica"}}
         except UnverifiedIssue:
             return {"error": {"code": "issue_evidence_unverified"}}
         except (MulticaAPIError, MailboxError) as exc:
@@ -269,7 +304,7 @@ class Gateway:
                                       project_id if job else None, job.get("job_id"), job.get("payload_hash"),
                                       workspace.mailbox_recipient if job else None)
             return self._deliver(principal, args["request_id"], command)
-        if name in {"get_dispatch", "get_dispatch_result"}:
+        if name in {"get_dispatch", "get_dispatch_result", "get_dispatch_acceptance"}:
             request = args["request_id"]
             receipt = self.ledger.get(principal, request)
             if receipt is None or (receipt.instance_id, receipt.workspace_id, receipt.project_id) != (
@@ -282,6 +317,11 @@ class Gateway:
             link = self.ledger.mailbox_link(principal, request)
             if link is None:
                 raise GatewayError("dispatch_has_no_mailbox")
+            if name == "get_dispatch_acceptance":
+                if args["job_id"] != link["job_id"]:
+                    raise GatewayError("dispatch_unavailable")
+                native = self._dispatch_adapter(instance, workspace, instance_id)
+                return self._intake_view(principal, request, receipt, link, native)
             return self._mailbox().receipt(job_id=link["job_id"], version=args["version"])
         http = NativeHTTP(origin=instance.origin, token=instance.token, allow_private_http=instance.allow_private_http)
         operations = NativeOperations(http, instance_id=instance_id, expected_user_id=instance.expected_user_id,

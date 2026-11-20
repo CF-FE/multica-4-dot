@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, urlsplit
 import unittest
 from uuid import UUID
 
-from multica_backend.delivery import DeliveryLedger, DispatchCommand, NewIssue, UnverifiedIssue
+from multica_backend.delivery import DeliveryLedger, DispatchCommand, HistoricalIssueUnverified, NewIssue, UnverifiedIssue
 from multica_backend.native_dispatch import MulticaDispatch
 from multica_backend.native_http import NativeHTTP, NativeHTTPError
 
@@ -311,7 +311,7 @@ class NativeDispatchTest(unittest.TestCase):
         markers = self.fixture.creates[0]["properties"]
         self.assertEqual(set(markers), {PROPERTY, MAILBOX})
         self.assertTrue(markers[MAILBOX].startswith("mcp-mailbox-v1:"))
-        with self.assertRaises(NativeHTTPError) as found:
+        with self.assertRaises(HistoricalIssueUnverified) as found:
             self.dispatch.lookup(MAIL_COMMAND, "mcp-dispatch-v1:" + "a" * 64)
         self.assertEqual(found.exception.code, "mailbox_issue_already_exists")
         original = replace(MAIL_COMMAND, new_issue=None, original_issue_id=ISSUE)
@@ -327,7 +327,7 @@ class NativeDispatchTest(unittest.TestCase):
         ]:
             with self.subTest(properties=properties, metadata=metadata):
                 self.fixture.add_issue(ISSUE, properties, metadata=metadata, creator_id=OTHER)
-                with self.assertRaises(NativeHTTPError) as found:
+                with self.assertRaises(HistoricalIssueUnverified) as found:
                     self.deliver(MAIL_COMMAND)
                 self.assertEqual(found.exception.code, "legacy_mailbox_issue_exists")
                 self.assertEqual(self.ledger.get(PRINCIPAL, REQUEST).state, "accepted")
@@ -346,7 +346,7 @@ class NativeDispatchTest(unittest.TestCase):
             metadata={"task_mailbox_job_id": command.mailbox_job_id, "historical_note": "synthetic fixture"},
         )
 
-        with self.assertRaises(NativeHTTPError) as found:
+        with self.assertRaises(HistoricalIssueUnverified) as found:
             self.deliver(command)
         self.assertEqual(found.exception.code, "legacy_mailbox_issue_exists")
         self.assertEqual(self.ledger.get(PRINCIPAL, REQUEST).state, "accepted")

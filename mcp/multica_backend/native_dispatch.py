@@ -8,9 +8,10 @@ import re
 from typing import Any
 from urllib.parse import urlencode
 
-from .delivery import DispatchCommand, IssueReference, UnverifiedIssue
+from .delivery import DispatchCommand, HistoricalIssueUnverified, IssueReference, UnverifiedIssue
 from .multica_api import _match_id, _uuid
 from .native_http import NativeHTTP, NativeHTTPError
+from .native_intake import read_intake_run, read_receipt
 
 
 _PAGE_SIZE = 25
@@ -191,11 +192,18 @@ class MulticaDispatch:
         if not matches:
             return None
         if len(matches) != 1:
+            if not expected_creator:
+                raise HistoricalIssueUnverified("historical_issue_ambiguous")
             raise UnverifiedIssue("native Issue association matches more than one Issue")
         issue_id = next(iter(matches))
-        detail = self._get(command, f"/api/issues/{issue_id}", "issue")
-        ref = self._verified_issue(command, detail, issue_id=issue_id, expected_creator=expected_creator)
-        self._verify_marker(detail, bag, key, value)
+        try:
+            detail = self._get(command, f"/api/issues/{issue_id}", "issue")
+            ref = self._verified_issue(command, detail, issue_id=issue_id, expected_creator=expected_creator)
+            self._verify_marker(detail, bag, key, value)
+        except (NativeHTTPError, UnverifiedIssue) as exc:
+            if not expected_creator:
+                raise HistoricalIssueUnverified("historical_issue_unverified", issue_id) from exc
+            raise
         return ref, detail
 
     def lookup(self, command: DispatchCommand, correlation: str) -> IssueReference | None:
@@ -215,24 +223,73 @@ class MulticaDispatch:
                 self._verify_mailbox_reference(command, detail)
                 return reference
         if command.mailbox_job_id is not None:
-            self._check_no_other_mailbox_issue(command)
+            association = self._find_mailbox_issue(command)
+            if association is not None:
+                prior, reason = association
+                if self._read_receipt(command, prior)["state"] != "accepted":
+                    raise HistoricalIssueUnverified(reason, prior.issue_id)
+                return prior
         self._property_id()
         return None
 
-    def _check_no_other_mailbox_issue(self, command: DispatchCommand) -> None:
-        mailbox = self._mailbox_marker(command)
+    def _find_mailbox_issue(self, command: DispatchCommand) -> tuple[IssueReference, str] | None:
         # Historical jobs used the metadata bag. Check it before any property
         # provisioning requirement, including in workspaces with zero definitions.
-        if self._search_exact(command, _LEGACY_MAILBOX_METADATA, command.mailbox_job_id, bag="metadata") is not None:
-            raise NativeHTTPError("issue_lookup", "legacy_mailbox_issue_exists")
+        keys = [("metadata", _LEGACY_MAILBOX_METADATA, command.mailbox_job_id, "legacy_mailbox_issue_exists")]
         if self._legacy_mailbox_property_id:
-            self._validate_text_property(command, self._legacy_mailbox_property_id, writable=False)
-            if self._search_exact(command, self._legacy_mailbox_property_id, command.mailbox_job_id) is not None:
-                raise NativeHTTPError("issue_lookup", "legacy_mailbox_issue_exists")
-        for key, value in mailbox.items():
-            self._validate_text_property(command, key, writable=False)
-            if self._search_exact(command, key, value) is not None:
-                raise NativeHTTPError("issue_lookup", "mailbox_issue_already_exists")
+            keys.append(("properties", self._legacy_mailbox_property_id, command.mailbox_job_id,
+                         "legacy_mailbox_issue_exists"))
+        keys.extend(("properties", key, value, "mailbox_issue_already_exists")
+                    for key, value in self._mailbox_marker(command).items())
+        candidate = None
+        for bag, key, value, reason in keys:
+            try:
+                if bag == "properties":
+                    self._validate_text_property(command, key, writable=False)
+                found = self._search_exact(command, key, value, bag=bag)
+            except HistoricalIssueUnverified:
+                raise
+            except UnverifiedIssue as exc:
+                issue_id = candidate[0].issue_id if candidate else None
+                raise HistoricalIssueUnverified("historical_issue_unverified", issue_id) from exc
+            except NativeHTTPError as exc:
+                if candidate is not None:
+                    raise HistoricalIssueUnverified("historical_issue_unverified", candidate[0].issue_id) from exc
+                raise
+            if found is None:
+                continue
+            reference, _ = found
+            if candidate is not None and reference != candidate[0]:
+                raise HistoricalIssueUnverified("historical_issue_ambiguous")
+            if candidate is None:
+                candidate = reference, reason
+
+        return candidate
+
+    def _read_receipt(self, command: DispatchCommand, issue: IssueReference) -> dict:
+        return read_receipt(self._http, issue, job_id=command.mailbox_job_id,
+                            payload_hash=command.mailbox_payload_hash, coordinator_id=command.coordinator_id)
+
+    def inspect_intake(self, command: DispatchCommand, issue: IssueReference, correlation: str) -> tuple[dict, dict]:
+        try:
+            detail = self._get(command, f"/api/issues/{issue.issue_id}", "issue")
+            self._verified_issue(command, detail, issue_id=issue.issue_id)
+            self._verify_mailbox_reference(command, detail, allow_legacy=True)
+            association = self._find_mailbox_issue(command)
+            if association is None or association[0] != issue:
+                raise UnverifiedIssue("Mailbox association could not be confirmed")
+        except HistoricalIssueUnverified as exc:
+            return ({"state": "unconfirmed", "reason": exc.code}, {"state": "unconfirmed"})
+        except (NativeHTTPError, UnverifiedIssue):
+            return ({"state": "unconfirmed", "reason": "issue_evidence_unverified"}, {"state": "unconfirmed"})
+
+        receipt = self._read_receipt(command, issue)
+        properties = detail["properties"]
+        if (self._correlation_property_id is None or properties.get(self._correlation_property_id) != correlation
+                or detail.get("creator_type") != "member" or detail.get("creator_id") != self._user_id):
+            return receipt, {"state": "unattributed"}
+        return receipt, read_intake_run(self._http, issue, coordinator_id=command.coordinator_id,
+                                       receipt=receipt.get("receipt", {}))
 
     def _property_id(self) -> str:
         if self._correlation_property_id is None:

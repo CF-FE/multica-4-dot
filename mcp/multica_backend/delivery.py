@@ -20,6 +20,14 @@ class UnverifiedIssue(ValueError):
     """Native evidence does not establish the expected Issue."""
 
 
+class HistoricalIssueUnverified(UnverifiedIssue):
+    """A Mailbox job has a possible prior Issue and may only be reconciled."""
+
+    def __init__(self, code: str, issue_id: str | None = None):
+        super().__init__(code)
+        self.code, self.issue_id = code, issue_id
+
+
 @dataclass(frozen=True)
 class NewIssue:
     title: str
@@ -155,6 +163,13 @@ class DeliveryLedger:
                     PRIMARY KEY (principal, request_id), UNIQUE (job_id)
                 )
             """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS delivery_intake (
+                    principal TEXT NOT NULL, request_id TEXT NOT NULL,
+                    coordinator_id TEXT NOT NULL, candidate_issue_id TEXT, hold_reason TEXT,
+                    PRIMARY KEY (principal, request_id)
+                )
+            """)
 
     def _connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path)
@@ -243,6 +258,10 @@ class DeliveryLedger:
                 """, (principal, request_id)).fetchone()
                 if binding is None or binding["job_id"] != command.mailbox_job_id:
                     raise RequestConflict("original Mailbox job already has a dispatch")
+                db.execute("""
+                    INSERT INTO delivery_intake (principal, request_id, coordinator_id)
+                    VALUES (?, ?, ?) ON CONFLICT DO NOTHING
+                """, (principal, request_id, command.coordinator_id))
         return self._result(row)
 
     def mailbox_link(self, principal: str, request_id: str) -> dict | None:
@@ -253,6 +272,14 @@ class DeliveryLedger:
                 WHERE principal = ? AND request_id = ?
             """, (principal, request_id)).fetchone()
         return dict(row) if row is not None else None
+
+    def intake_binding(self, principal: str, request_id: str) -> dict:
+        with closing(self._connect()) as db:
+            row = db.execute("""
+                SELECT coordinator_id, candidate_issue_id, hold_reason FROM delivery_intake
+                WHERE principal = ? AND request_id = ?
+            """, (principal, request_id)).fetchone()
+        return dict(row) if row is not None else {}
 
     def _confirm(
         self, principal: str, request_id: str, command: DispatchCommand, issue: IssueReference
@@ -271,7 +298,9 @@ class DeliveryLedger:
             db.execute("""
                 UPDATE delivery_requests SET state = 'confirmed', issue_id = ?, command_json = NULL
                 WHERE principal = ? AND request_id = ? AND issue_id IS NULL
-            """, (issue_id, principal, request_id))
+                  AND NOT EXISTS (SELECT 1 FROM delivery_intake i WHERE i.principal = delivery_requests.principal
+                      AND i.request_id = delivery_requests.request_id AND i.candidate_issue_id <> ?)
+            """, (issue_id, principal, request_id, issue_id))
             row = self._read(db, principal, request_id)
             if row["issue_id"] != issue_id:
                 raise UnverifiedIssue("native evidence conflicts with an existing receipt")
@@ -292,12 +321,23 @@ class DeliveryLedger:
         if current.state == "confirmed":
             return current
 
-        issue = native.lookup(command, current.correlation)
+        try:
+            issue = native.lookup(command, current.correlation)
+        except HistoricalIssueUnverified as exc:
+            with closing(self._connect()) as db, db:
+                db.execute("""
+                    UPDATE delivery_intake
+                    SET candidate_issue_id = coalesce(candidate_issue_id, ?), hold_reason = ?
+                    WHERE principal = ? AND request_id = ?
+                """, (exc.issue_id, exc.code, principal, request_id))
+            raise
         if issue is not None:
             return self._confirm(principal, request_id, command, issue)
         if command.original_issue_id is not None:
             raise UnverifiedIssue("the original Issue could not be verified")
         if current.state == "unknown":
+            return current
+        if self.intake_binding(principal, request_id).get("hold_reason"):
             return current
 
         native.check_create(command)
@@ -305,6 +345,8 @@ class DeliveryLedger:
             claim = db.execute("""
                 UPDATE delivery_requests SET state = 'unknown'
                 WHERE principal = ? AND request_id = ? AND state = 'accepted'
+                  AND NOT EXISTS (SELECT 1 FROM delivery_intake i WHERE i.principal = delivery_requests.principal
+                      AND i.request_id = delivery_requests.request_id AND i.hold_reason IS NOT NULL)
             """, (principal, request_id)).rowcount
             row = self._read(db, principal, request_id)
         if claim == 0:

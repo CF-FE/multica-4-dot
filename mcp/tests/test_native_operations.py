@@ -266,9 +266,13 @@ class NativeOperationsTests(unittest.TestCase):
     def test_issue_assignment_can_explicitly_trigger_native_dispatch(self):
         outcome = {"status": "queued", "reason_code": "enqueued", "target_id": REVIEWER, "target_type": "agent"}
         with fixture({("PUT", ISSUE_PATH): issue_row(revision=6, assignee_id=REVIEWER, run_outcome=outcome)}) as (adapter, calls, _):
-            result = adapter().call("dot", "update_issue", scoped(assignee_type="agent", assignee_id=REVIEWER, start_run=True))
+            args = scoped(assignee_type="agent", assignee_id=REVIEWER, expected_revision=5, start_run=True)
+            gateway = adapter()
+            result = gateway.call("dot", "update_issue", args)
             self.assertEqual(result["receipt"]["run_outcome"]["status"], "queued")
             self.assertIs(writes(calls)[0][3]["suppress_run"], False)
+            self.assertEqual(gateway.call("dot", "update_issue", args), result)
+            self.assertEqual(len(writes(calls)), 1)
 
     def test_silent_note_is_top_level_and_fails_closed_on_unexpected_trigger(self):
         with fixture({("POST", NOTE_PATH): lambda body: (201, comment_row(body))}) as (adapter, calls, routes):

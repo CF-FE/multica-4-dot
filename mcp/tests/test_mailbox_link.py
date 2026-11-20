@@ -132,7 +132,7 @@ class MailboxLinkTest(unittest.TestCase):
 
     def verify(self, client=None, **updates):
         args = {"job_id": JOB, "payload_hash": self.job["payload_hash"], "workspace_id": WORKSPACE,
-                "project_id": PROJECT, "recipient": RECIPIENT}
+                "project_id": PROJECT, "recipient": RECIPIENT, "instance_id": "fixture", "coordinator_id": PROJECT}
         return (client or self.client()).verify_job(**(args | updates))
 
     def ack(self, cursor, *, job_id=JOB, version=1, result_hash=None):
