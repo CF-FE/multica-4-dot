@@ -66,6 +66,8 @@ if isinstance(agents, dict):
 eligible = []
 for agent in agents:
     aid = str(UUID(agent["id"]))
+    if args.revoke_agent and aid != str(args.revoke_agent):
+        continue
     attached = call("agent", "mcp", "list", aid)
     enabled = {s["name"] for s in attached if s["enabled"]}
     if enabled.intersection({legacy_name, library_name}):

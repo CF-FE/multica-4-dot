@@ -1,0 +1,21 @@
+{
+  "baseline": {
+    "tag": "v0.11.0",
+    "commit": "cb190810a659c1a61c4a86d9f6ecfc9df4b086d8",
+    "source_sha256": {
+      "server/cmd/server/router.go": "9e6fa27f612a13102e21d4c91d2bcbae0c473296dfba11d819ba776c70b7a4c8",
+      "server/internal/handler/comment.go": "420f7c6efbf4664f9b1af28628bcdc145fb305e24e25ea5b0c94924badc162c7",
+      "server/internal/handler/daemon.go": "9669ce96f713ceda0041f58bd52e6a05094b67e7585085bb1e810fe23c884f75"
+    }
+  },
+  "candidate": {
+    "tag": "v0.11.1",
+    "commit": "e1fe10d6694848e35dd1aa00e08cd11d93e545ac",
+    "source_sha256": {
+      "server/cmd/server/router.go": "3e0d7ee44fe9c510a1c0d1be03dae676df833e01ab699d53fd5ac0ab81cbf281",
+      "server/internal/handler/comment.go": "420f7c6efbf4664f9b1af28628bcdc145fb305e24e25ea5b0c94924badc162c7",
+      "server/internal/handler/daemon.go": "be3b99008de7f30dec7f305293172a8edb30290f5684db59a522aebb2b1615c9"
+    }
+  },
+  "postgres_image": "pgvector/pgvector:pg17"
+}

@@ -1,0 +1,20 @@
+{
+  "instances": {
+    "tencent": {
+      "origin": "https://example.invalid",
+      "expected_user_id": "REPLACE_WITH_MULTICA_USER_UUID",
+      "pat_credential": "multica-pat",
+      "principals": ["github:REPLACE_WITH_GITHUB_NUMERIC_ID"],
+      "workspaces": {
+        "REPLACE_WITH_WORKSPACE_UUID": {
+          "coordinator_id": "REPLACE_WITH_CURRENT_COORDINATOR_UUID",
+          "correlation_property_id": null,
+          "mailbox_property_id": null,
+          "legacy_mailbox_property_id": null,
+          "mailbox_recipient": null
+        }
+      },
+      "enabled_writes": []
+    }
+  }
+}

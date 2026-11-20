@@ -1,0 +1,35 @@
+[Unit]
+Description=Multica Backend MCP
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=multica-backend
+Group=multica-backend
+WorkingDirectory=/opt/multica-backend/current
+StateDirectory=multica-backend
+StateDirectoryMode=0700
+EnvironmentFile=/etc/multica-backend/oauth.env
+Environment=MULTICA_MCP_CONFIG=%d/config.json
+Environment=MULTICA_MCP_STATE_DIR=%S/multica-backend
+Environment=MULTICA_MCP_OAUTH_STATE_DIR=%S/multica-backend/oauth
+Environment=MULTICA_MCP_PORT=8770
+LoadCredential=config.json:/etc/multica-backend/config.json
+LoadCredential=multica-pat:/etc/multica-backend/multica-pat
+LoadCredential=github-client-id:/etc/multica-backend/github-client-id
+LoadCredential=github-client-secret:/etc/multica-backend/github-client-secret
+LoadCredential=oauth-signing-key:/etc/multica-backend/oauth-signing-key
+ExecStart=/bin/sh /opt/multica-backend/current/run-service.sh
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

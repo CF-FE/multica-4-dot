@@ -5,7 +5,7 @@
   "oauth": {
     "protected_resource_metadata_url": null,
     "issuer": null,
-    "client_registration_mode": null,
+    "client_registration_mode": "dcr",
     "host_redirect_uri": null,
     "verified_scopes": null
   },

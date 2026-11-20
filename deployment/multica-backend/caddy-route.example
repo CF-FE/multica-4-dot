@@ -1,0 +1,10 @@
+# Insert inside the active shared Caddyfile's `route`, above the legacy catch-all.
+# Exact matches preserve the paths already served by other applications.
+@multica_backend_oauth_metadata path /.well-known/oauth-authorization-server/multica-backend /.well-known/openid-configuration/multica-backend /.well-known/oauth-protected-resource/multica-backend/mcp
+reverse_proxy @multica_backend_oauth_metadata 127.0.0.1:8770
+
+@multica_backend path /multica-backend/mcp /multica-backend/authorize /multica-backend/consent /multica-backend/token /multica-backend/register /multica-backend/revoke /multica-backend/auth/callback
+handle @multica_backend {
+    uri strip_prefix /multica-backend
+    reverse_proxy 127.0.0.1:8770
+}

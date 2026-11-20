@@ -1,0 +1,25 @@
+[Unit]
+Description=Reconcile accepted Multica Backend requests
+Requisite=multica-backend.service
+After=multica-backend.service
+PartOf=multica-backend.service
+
+[Service]
+Type=oneshot
+User=multica-backend
+Group=multica-backend
+WorkingDirectory=/opt/multica-backend/current
+StateDirectory=multica-backend
+StateDirectoryMode=0700
+EnvironmentFile=/etc/multica-backend/oauth.env
+Environment=MULTICA_MCP_CONFIG=%d/config.json
+Environment=MULTICA_MCP_STATE_DIR=%S/multica-backend
+LoadCredential=config.json:/etc/multica-backend/config.json
+LoadCredential=multica-pat:/etc/multica-backend/multica-pat
+ExecStart=/bin/sh /opt/multica-backend/current/run-service.sh recover
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

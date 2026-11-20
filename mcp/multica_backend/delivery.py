@@ -46,6 +46,8 @@ class DispatchCommand:
     original_issue_id: str | None = None
     mailbox_project_id: str | None = None
     mailbox_job_id: str | None = None
+    mailbox_payload_hash: str | None = None
+    mailbox_recipient: str | None = None
 
     def __post_init__(self) -> None:
         if not self.instance_id or self.instance_id != self.instance_id.strip():
@@ -56,6 +58,13 @@ class DispatchCommand:
             raise ValueError("provide both Mailbox project and job IDs")
         object.__setattr__(self, "mailbox_project_id", self.mailbox_project_id or None)
         object.__setattr__(self, "mailbox_job_id", self.mailbox_job_id or None)
+        if (self.mailbox_payload_hash is None) != (self.mailbox_recipient is None):
+            raise ValueError("a verified Mailbox reference requires both its hash and recipient")
+        if self.mailbox_payload_hash is not None:
+            if not self.mailbox_job_id or len(self.mailbox_payload_hash) != 64 or any(
+                ch not in "0123456789abcdef" for ch in self.mailbox_payload_hash
+            ) or not self.mailbox_recipient.strip():
+                raise ValueError("invalid verified Mailbox reference")
         for name in ("workspace_id", "project_id", "coordinator_id", "original_issue_id"):
             value = getattr(self, name)
             if value is not None or name != "original_issue_id":
@@ -138,6 +147,14 @@ class DeliveryLedger:
                 CREATE INDEX IF NOT EXISTS delivery_pending
                 ON delivery_requests (principal, state, request_id)
             """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS delivery_mailbox (
+                    principal TEXT NOT NULL, request_id TEXT NOT NULL,
+                    project_id TEXT NOT NULL, job_id TEXT NOT NULL,
+                    payload_hash TEXT NOT NULL, recipient TEXT NOT NULL,
+                    PRIMARY KEY (principal, request_id), UNIQUE (job_id)
+                )
+            """)
 
     def _connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path)
@@ -193,7 +210,11 @@ class DeliveryLedger:
         """Persist intent identity before sending. Equivalent requests reuse the receipt."""
         if not principal.strip() or not request_id.strip():
             raise ValueError("authenticated principal and stable request ID are required")
-        command_json = _canonical_json(asdict(command))
+        fields = asdict(command)
+        if command.mailbox_payload_hash is None:
+            # Preserve receipt fingerprints written before verified Mailbox links were added.
+            del fields["mailbox_payload_hash"], fields["mailbox_recipient"]
+        command_json = _canonical_json(fields)
         input_hash = hashlib.sha256(("dispatch-issue-v1:" + command_json).encode("utf-8")).hexdigest()
         request_key = _canonical_json([principal, request_id]).encode("utf-8")
         correlation = "mcp-dispatch-v1:" + hashlib.sha256(request_key).hexdigest()
@@ -211,7 +232,27 @@ class DeliveryLedger:
             row = self._read(db, principal, request_id)
             if row["input_hash"] != input_hash:
                 raise RequestConflict("request ID already used for different command input")
+            if command.mailbox_payload_hash is not None:
+                db.execute("""
+                    INSERT INTO delivery_mailbox VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT DO NOTHING
+                """, (principal, request_id, command.mailbox_project_id, command.mailbox_job_id,
+                      command.mailbox_payload_hash, command.mailbox_recipient))
+                binding = db.execute("""
+                    SELECT job_id FROM delivery_mailbox WHERE principal = ? AND request_id = ?
+                """, (principal, request_id)).fetchone()
+                if binding is None or binding["job_id"] != command.mailbox_job_id:
+                    raise RequestConflict("original Mailbox job already has a dispatch")
         return self._result(row)
+
+    def mailbox_link(self, principal: str, request_id: str) -> dict | None:
+        """Read the verified return route even after the transient command has been cleared."""
+        with closing(self._connect()) as db:
+            row = db.execute("""
+                SELECT project_id, job_id, payload_hash, recipient FROM delivery_mailbox
+                WHERE principal = ? AND request_id = ?
+            """, (principal, request_id)).fetchone()
+        return dict(row) if row is not None else None
 
     def _confirm(
         self, principal: str, request_id: str, command: DispatchCommand, issue: IssueReference
