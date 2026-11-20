@@ -22,6 +22,18 @@
 
 ## 原始回执索引
 
+### 11 月 20 日晚的 Windows Kimi 共享配置
+
+软件实现工程师、研究分析师和默认模型验证角色共用 `~/.kimi-code`，三个角色均已挂载 `hindsight-memory`。Kimi 的 `mcp.json` 中 `mcpServers.hindsight.enabled` 为 `false`，原有 `UserPromptSubmit` hook 继续负责首轮召回。显式查询从任务工作目录执行 `~/.kimi-code/skills/hindsight-memory/scripts/win_kimi_memory.py`，由受限代理校验项目与操作。维护时同步 Windows 共享 Skill 与 Multica 已发布的同版内容。[Windows 调用脚本](../deployment/hindsight/win_kimi_memory.py)
+
+win-work 晚间实际可执行文件为 Kimi 2.7.2。普通 Git 目录的 origin 只用于识别项目。要获得普通 checkout 的写权，还需宿主登记相应根目录与写入 bank。软件实现工程师用于过渡验证的独立 home 已撤下。[权限修复 CLOU-14](http://10.207.56.3:3000/cloud-work/issues/CLOU-14) · [工程师验收 CLOU-29](http://10.207.56.3:3000/cloud-work/issues/CLOU-29) · [研究员验收 CLOU-30](http://10.207.56.3:3000/cloud-work/issues/CLOU-30)
+
+两条新会话的首轮模型工具清单各有 26 项，原生 Hindsight 工具均为零。首次业务工具前，各注入当前项目记忆 3 条。随后两个角色分别通过统一 Skill 读回当前库的 `multica-hindsight-verified-20261120-wk`（4 单元）和 Herdr 库的 `herdr-issue13-vps-bank-authorization-20261106`（6 单元）。工程师显式召回分别为 3、8 条，研究员为 7、11 条。本次只读，默认模型验证角色仅核对了配置。工程师 Run 为 `01a1f889-6edd-70a7-8c39-d3427f2e23d8`，研究员 Run 为 `01a1f88b-19d7-7599-a927-9bf2d6972f25`。
+
+独立审查员已在 CLOU-14 判定通过。它核对了两份 Kimi 会话原件，并以离线替身复验仅有 origin、缺少当前项目写权、跨库写及会话中撤权等情形。本轮没有向真实 bank 写测试数据。[独立复审回执](http://10.207.56.3:3000/cloud-work/issues/CLOU-14#comment-01a1f896-7f0d-7c6b-a0f8-6871b65d9c20)
+
+### 各运行端首次验收
+
 | 验收卡 | 关键 Multica Run | 当前项目已读回的留存文档 ID |
 |---|---|---|
 | CLOU-10 · OMP | `01a1ee00-4f54-7b9c-9633-336c98f7628b` | 本轮未写 |

@@ -28,22 +28,24 @@ Decision Service 部署在外网 Vultr VPS，由 `decision-service.service` 监�
 
 | Multica 名称 | 角色 ID | 工作内容与验证单 |
 |---|---|---|
-| 视觉设计师（mac-work Codex） | `workspace_visual` | 视觉候选、可编辑源和导出后的实物检查。Codex 显式指定工作区写入、网络可用、按需审批。CLOU-24 |
-| 知识管理员（win-work DSH） | `workspace_knowledge` | 依据原件整理索引和冲突清单。使用 Multica 专用 DSH profile 与项目绑定的 Hindsight。CLOU-25 |
-| 产物处理（win-work DSH） | `artifact_processing` | 确定性文件或数据转换，另存输出并核对内容、大小和摘要。CLOU-26 |
-| 辩证复核专员（win-work DSH） | `workspace_dialectic` | 对固定方案做对抗、优化与对齐。需声称独立双线时，应有可追溯的两个独立上下文。CLOU-27 |
+| 视觉设计师（mac-work Codex） | `workspace_visual` | 已实测读图和生图。读图时正确读出图形方位、颜色与字符；生图时公子指定的 `gpt-6.2-sol` 调用原生图像生成工具，生成《橘猫邮差》并将 1086 × 1448 PNG 上传原卡。下载件与生成原件的 SHA-256 一致。该 Agent 经 Mac 现有 Verge 连接模型，内网直连。[读图 CLOU-24](http://10.207.56.3:3000/cloud-work/issues/CLOU-24) · [生图 CLOU-28](http://10.207.56.3:3000/cloud-work/issues/CLOU-28) |
+| 知识管理员（win-work Hermes） | `workspace_knowledge` | 依据原件整理索引和冲突清单，按稳定文档 ID 核对 Hindsight 原文。沿用 Agent `7fe827c7-11ad-4afa-ba03-9f883deb16c4`；换绑前后的 Run 均在同一张验收卡。[CLOU-25](http://10.207.56.3:3000/cloud-work/issues/CLOU-25) |
+| 产物处理（win-work DSH） | `artifact_processing` | 确定性文件转换。已从原卡下载 UTF-8 CSV，逐字节核对 28 字节和 SHA-256。[CLOU-26](http://10.207.56.3:3000/cloud-work/issues/CLOU-26) |
+| 辩证复核专员（win-work DSH） | `workspace_dialectic` | 已在原卡对齐同一简报中的正反证据，给出中断恢复的验收条件。独立双线复核另需两个各自形成首稿的上下文。[CLOU-27](http://10.207.56.3:3000/cloud-work/issues/CLOU-27) |
 
-三名 DSH 岗位使用已有的 `multica` profile 和 `local-gpt/gpt-6.2-sol`。Hermes 的 ACP 工作目录是工具解析起点，当前 `local` 终端继承 Windows 账号权限。知识管理员采用已有 `workspace-write` 策略的 DSH；角色配置读回与宿主级文件隔离的实测各自记录。[Hermes 工作目录与后端](https://github.com/NousResearch/hermes-agent/blob/09ded63/website/docs/user-guide/profiles.md#L239-L244) · [DSH 项目记忆](win-work-hindsight.md)
+产物处理和辩证复核沿用 DSH 的 `multica` profile 和 `local-gpt/gpt-6.2-sol`。知识管理员按公子指定原位改绑 win-work Hermes，模型随运行时配置。岗位指令限定在当次工作区内操作；Hermes 的 `local` 终端继承 Windows 账号的文件权限，宿主级强制隔离待验。[Hermes 工作目录与后端](https://github.com/NousResearch/hermes-agent/blob/09ded63/website/docs/user-guide/profiles.md#L239-L244) · [项目记忆接入](win-work-hindsight.md)
 
-**上一轮 win-work Hermes。** 原「Hermes 默认模型验证（win-work）」保留原 ID，盘点时空闲，6 个历史 Run 全部终结（4 完成、1 失败、1 取消）。CLOU-4、12、16、19、23 均已结项，无启用中的 Issue 唤醒。CLOU-16 已验证正常 ACP 首轮记忆注入、按 ID 读取与本库留存；CLOU-19 的单行留存已在限制内重交并读回。CLOU-4 曾在 daemon 重启后自动重试但未恢复交付，后来成功的是独立新会话。修复后版本的故障恢复仍需受控演练。未来升级先对照 CLOU-12 的三处源码适配及备份。原验证 Agent 的模型和推理档位继承运行时，角色本身没有另行分配 Multica Skill 或 MCP。[Hermes 接入证据](hindsight-installation-report-2026-11-20.md)
+**知识管理员的实际启动入口。** win-work 上的 Hermes 0.23.3 已用岗位专属 Multica 运行时配置调用 `%LOCALAPPDATA%\hermes\bin\hermes.exe acp`。旧 checkout 的 `venv\Scripts\hermes.exe` 曾连续两次在初始化时无法导入 `ArgsKwargs`；同机受管启动器通过 ACP 握手。原卡新 Run `01a1f85f-a882-7805-8132-408f187f61c5` 核对了 CLOU-16、CLOU-23，调用 `mcp__hindsight__get_document` 按稳定 ID 取回原文并回报原卡，独立读回的 SHA-256 一致。此次使用显式读取；新会话的派生配置将外部 `memory.provider` 留空，首轮自动注入只在旧版本验收中得到验证。[换绑验收 CLOU-25](http://10.207.56.3:3000/cloud-work/issues/CLOU-25)
+
+**已退役的 win-work Hermes 验证智能体。** 2026-11-20 17:53（北京时间），按公子要求归档「Hermes 默认模型验证（win-work）」，并核对其已从工作区活动列表移除。旧 ID `ea0882b6-f4b7-45be-91ab-7993f2df28cc` 的 6 个历史 Run 仍可读取（4 完成、1 失败、1 取消）。CLOU-4、12、16、19、23 均已结项，相关 Issue 没有启用中的唤醒。CLOU-16 曾验证正常 ACP 首轮记忆注入、按 ID 读取及本库留存，CLOU-19 的单行留存已在长度限制内重交并读回。CLOU-4 在 daemon 重启后自动重试，原任务未能交付；后来成功的是单独新开的会话。升级后仍需受控验证中断恢复，并复核 CLOU-12 的三处源码适配及备份。[故障原卡](http://10.207.56.3:3000/cloud-work/issues/CLOU-4) · [接入验收](hindsight-installation-report-2026-11-20.md)
 
 ## 从角色要交付的结果开始
 
 | 要创建的角色 | 建议首选 | 什么情况下换选或补验 |
 |---|---|---|
 | 质量审查员 · `workspace_quality` | **win-work DSH**。沿用原审查员 ID，两份工作流都指派同一角色。角色模型为 `local-gpt/gpt-6.2-sol`，推理档位继承 DSH profile，使用 Multica 专用 profile 的 `workspace-write` 策略。 | 先核原件、候选 Run 和必验产物。审查者须独立于被审版本的制作。旧卡 CLOU-1 至 CLOU-3 的审查由当时的 mac-work Codex 执行。 |
-| 研究分析师 · `workspace_research` | **win-work Kimi**。已交付带固定版本源码引用的研究附件。 | 素材只在 Mac 时优先考虑 mac-work Kimi，以同一验收题补一条真实 Run。 |
-| 软件实现工程师 · `software_implementation` | **win-work Kimi**。已有小改动和独立回归测试的成例。任务明确指定 dsh-ops 的文件、搜索或 Bash 工具时选 **win-work DSH**。 | 工作要求由系统强制限制写入时，先取得目标主机的边界实测。两位现有 Kimi 角色使用宿主权限的授权仅适用于这两位。 |
+| 研究分析师 · `workspace_research` | **win-work Kimi**。技术调查按原件和版本取证。产品研究按材料调用 `competitor-analysis` 比较同一场景的竞品，`summarize-interview` 从访谈提取用户任务，`sentiment-analysis` 按样本分组整理正反反馈。[pm-skills v2.3.0](https://github.com/phuryn/pm-skills/tree/9af7bfd0bc47fdad43c2eaa7a43cd13918e7aaef) | 关键结论标来源、适用条件及可改变判断的证据。样本不足时保留实际数量和未知项。Windows Kimi 共享同一记忆入口。[研究员验收 CLOU-30](http://10.207.56.3:3000/cloud-work/issues/CLOU-30) |
+| 软件实现工程师 · `software_implementation` | **win-work Kimi**。实际故障用 `debugging-and-error-recovery`，有回归风险的行为变更用 `test-driven-development`，复杂改动用 `incremental-implementation` 分步交付。三项取自公子的 [my-agent-skills 6.4.0 固定版本](https://github.com/ghyghoo8/my-agent-skills/tree/af606510148d79141ab6b9643c60d39a44f06d87/plugins/my-agent-skills/skills)。项目记忆按工作区统一 `hindsight-memory` 约定。 | 工作要求由系统强制限制写入时，先取得目标主机的边界实测。两位现有 Kimi 角色使用宿主权限的授权仅适用于这两位。 |
 | 结构化重构、交互调试 · `software_implementation` | **win-work OMP** 是工具匹配的候选。AST、LSP 和 DAP 可提供结构匹配、引用及断点证据。 | 确认目标语言服务和调试器可用。该岗位目前有固定版本架构依据，项目历史案例覆盖的是宿主运维。 |
 | Windows 运维工程师 · `workspace_runtime` | **win-work OMP**。可使用本机 PowerShell、Windows 管理工具和 MCP 服务，已验证提升后的进程身份和工具结果。 | 普通工作区维护可复用 DSH。修改系统文件、安装服务或使用凭据时，按任务给出目标、授权范围、恢复方法及验收证据。 |
 | Multica 系统管理员 | **win-work OMP + `multica-backend`**。适合查实例、核对 Run、使用任务内 CLI 回报。 | 涉及 workspace owner 能力时，分别核验操作者与普通 Run 的身份、调用范围和一项可恢复操作。技能、宿主管理员、平台令牌各有独立作用。 |
@@ -161,6 +163,14 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 
 ## 建一个可以验收的角色
 
+win-work 新角色需要使用现有 GitHub 身份调用 Decision Service 时，在角色的 MCP 设置选择下表中的工作区条目。三个 harness 各自保存登录，同一 harness 的不同角色可复用。方法说明统一挂载 `decision-service` Skill。
+
+| win-work 运行时 | 在角色上选择的 MCP | 真实验证 |
+|---|---|---|
+| Kimi | `decision-service` | Kimi 2.7.2 首次加载可能晚于模型工具清单的生成。确认运行时已发现工具后，恢复原会话并实际查询。[CLOU-31](http://10.207.56.3:3000/cloud-work/issues/CLOU-31) |
+| DSH | `decision-service-dsh` | 此前未挂载决策 MCP 的验证角色，在首次查询时复用了现有登录。[接入说明](../deployment/decision-access/dsh/README.md) · [CLOU-35](http://10.207.56.3:3000/cloud-work/issues/CLOU-35) |
+| Hermes | `decision-service-hermes` | 知识管理员和新建角色各自完成新会话只读查询。[接入说明](../deployment/decision-access/hermes/README.md) · [CLOU-37](http://10.207.56.3:3000/cloud-work/issues/CLOU-37) |
+
 1. **选职责与样本。** 从角色库当前定义取角色 ID 和版本，写清输入、允许的动作、交付物、原始回报位置和谁验收。例如，软件实现工程师在指定仓库修正一个边界条件，交付差异和可重复的断言，由独立审查员在原卡复核。[角色库公共约定](https://github.com/CF-FE/herdr-4-codexcloud/blob/742ab342355b32b70e2bac5ab8cc64290d56e23b/docs/worker-library/roles/common.md)
 2. **选主机并核对权限。** 查当前 workspace、主机、provider、版本、已有角色及绑定。默认启用工具，使用工作区写入权限，按任务需要申请提权。分别确认调用者、可用工具、宿主可写路径以及凭据代表的身份，并记录提权由运行时自动应答还是由操作者确认。有硬隔离要求而该组合只有指令约束时，换用经验证的组合或先在隔离账户复验。
 3. **创建后读回。** 以下是 v0.10.0 的 CLI 示例。`WS` 和 `RT` 分别取目标 workspace 和已核对的 runtime ID，`NAME` 与 `INSTRUCTIONS` 取本角色的名称、职责与边界。`AGENT` 取创建结果的 ID。示例选私有、并发 1，共享范围与并发按角色需求单独设置。管理令牌由授权者经平台的私密环境变量入口配置。[CLI 命令参考](../skills/multica-backend/references/cli-v0.10.0.md) · [后端操作与身份](../skills/multica-backend/SKILL.md)
@@ -177,6 +187,8 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 
 4. **在新会话走完整派发。** 在正确的项目新建小任务，派给目标角色。读回实际执行者、runtime、Run 终态和工具结果，再核对交付物。验收研究角色时点开一条固定版本引用，验收实现角色时独立跑一个边界断言。运维角色需展示可撤销操作及恢复结果。审查员需走一次退回、重交和复审。知识角色用已有来源对照自动注入和显式读回。配置变更后开新会话，避免复用旧权限。
 5. **留下可追溯的结论。** 记录日期、主机、版本、Issue/Run、可复核产物及待验项。工具可用、Run 结束、角色能力通过、业务结果获负责人接受分开记录。角色调用范围用 `private` 或 `public_to` 表达。已有管理员允许整个工作区调用，是该角色经确认的例外。
+
+win-work 的 Kimi 2.7.2 会话可在任务目录 `.kimi/skills/<名称>/SKILL.md` 读取 Multica 挂载的岗位 Skill。研究员和工程师都从这里读到了各自的三项正文；这些名称未列入它们的原生 `Skill` 菜单。共享记忆位于 `~/.kimi-code/skills/hindsight-memory`。配置新角色时可分别验收任务挂载和宿主入口。[研究员回执](http://10.207.56.3:3000/cloud-work/issues/CLOU-30) · [工程师回执](http://10.207.56.3:3000/cloud-work/issues/CLOU-29)
 
 ## 资料索引
 
