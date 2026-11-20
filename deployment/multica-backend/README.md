@@ -13,7 +13,7 @@
 
 ## 现网速查
 
-2026-11-20，Vultr 的 `multica-backend.service` 已运行并启用开机启动，发行是 `0.1.0-ce2f26d619e8`。实例 `tencent` 的九项原生写能力已登记，专属账号通过真实项目、Issue 和 Run 的读取校验。公子已在云端添加 MCP。截至本次整理，目标 Dot 的工具调用结果和真实业务签收仍待原会话读回。独立恢复 timer 当日未安装。[首次上线回执](#2026-11-20-首次生产上线回执) · [工程验收记录](../../docs/multica-backend-tasks.md)
+2026-11-20，Vultr 现网发行是 `0.1.0-0732e9516828`，`multica-backend.service` 已运行并启用开机启动。云端已实际读回腾讯实例的 Mike 和项目。工作区协调规则已在 Mike 原有 Skill 上更新至 1.4.0。单笔信箱派发通过显式授权入口办理，独立恢复 timer 当日未安装。[单笔接单部署回执](#单笔接单部署回执) · [首次上线回执](#2026-11-20-首次生产上线回执)
 
 在已配置 SSH 别名的工作机执行。最后一条只输出 Multica API 地址。仓库内用示例域名，现场地址从配置取。
 
@@ -104,6 +104,32 @@ python3 -m json.tool /etc/multica-backend/config.json >/dev/null
 G8 的写入同时使用 OAuth 的 `write`、实例的 `enabled_writes` 和专属账号的原生权限。建卡派发需工作区的 text 属性 `correlation_property_id`。带原 job 的派发另需不同的 text 属性 `mailbox_property_id`、准确的 `mailbox_recipient` 及获准的信箱读取身份。当前协议也核对历史 Issue 的 `metadata.task_mailbox_job_id`。若旧系统另用文本属性保存原 job，可把它的 UUID 填入 `legacy_mailbox_property_id`。每个请求沿原键对账。[MCP 服务端](../../mcp/README.md) · [集成验收](../../docs/multica-backend-tasks.md#集成任务)
 
 回程查询获准后，在同一 `oauth.env` 加 `MULTICA_BACKEND_MAILBOX_URL` 与 `MULTICA_BACKEND_MAILBOX_SUBJECT`，向主服务与按需启用的恢复 unit 增加 `LoadCredential=mailbox-token:/etc/multica-backend/mailbox-token`，用本服务专用且已核准的信箱读取令牌及后续换证方式。包装器从 unit 凭据读取令牌。其他 Multica 实例需给运行该实例的 unit 配同名 `pat_credential`，每实例使用自己的凭据文件。
+
+Vultr 的接单身份是 `service:multica-mailbox-reader`。主服务从 `40-task-mailbox-reader.conf` 加载上述凭据，并从 `/etc/multica-backend/mailbox-intake.env` 读取 HTTPS 信箱入口与预期主体。信箱只开放 `whoami` 和按原 `job_id` 调用的 `get_job`。每次读取都核对腾讯实例、`cloud-work`、收件人、回报路由及项目的原生归属，覆盖现有和今后新增的项目。此身份无法读取结果版本或事件列表。结果已读仍沿获准的结果收件方查询。
+
+### 校验信箱原单的项目归属
+
+Vultr 同主机部署的 Task Mailbox 通过 `/run/multica-mailbox-project.sock` 读取项目归属。这个 Unix socket 归 `root:task-mailbox`，权限为 `0660`。Task Mailbox 的受限读取身份先核目标与收件人，再调用 `GET /api/projects/{规范小写 UUID}`。独立进程从 systemd 读取现有腾讯实例配置与网关专属凭据，向 Multica 核对专属账号身份以及项目的真实工作区。查询成功时仅返回 `id` 和 `workspace_id`。新增项目通过下一次原生查询验证，沿用同一工作区。原生账号看不到的项目、工作区不符或暂时无法读回时，信箱保留拒绝状态。
+
+首次安装在 Vultr root 终端执行。先核对 Task Mailbox 的组名为 `task-mailbox`、网关当前发行可运行，以及腾讯配置下已登记 cloud-work。将下列三个文件从已核源码复制到私有暂存目录，再从暂存目录执行。
+
+```sh
+install -m 0644 project-scope.py /opt/multica-backend/project-scope.py
+install -m 0644 multica-mailbox-project.socket multica-mailbox-project@.service /etc/systemd/system/
+systemd-analyze verify /etc/systemd/system/multica-mailbox-project.socket /etc/systemd/system/multica-mailbox-project@.service
+systemctl daemon-reload
+systemctl enable --now multica-mailbox-project.socket
+```
+
+把 `PROJECT_ID` 设成一个已知属于 cloud-work 的项目 UUID，以信箱的实际 Unix 身份验证。
+
+```sh
+runuser -u task-mailbox -- curl --noproxy '*' --fail --silent --show-error \
+  --unix-socket /run/multica-mailbox-project.sock \
+  "http://localhost/api/projects/$PROJECT_ID"
+```
+
+回读项目 UUID 和工作区 `e25be43b-82b6-419d-9085-bb5c5700b1af`，再核对随机未知 UUID 返回 `404`、同 URL 的 `POST` 返回 `501`、普通非信箱账号无法连接。服务按连接启动并限制运行时间。撤回归属校验时先撤销信箱的该服务身份，再运行 `systemctl disable --now multica-mailbox-project.socket` 停用入口。
 
 ## 第 4 屏 · 启动回环服务，核验 OAuth 发现
 
@@ -205,6 +231,8 @@ ssh vps-herdr 'sudo /opt/multica-backend/enroll-pat --check && sudo systemctl re
 
 ## 升级与回退
 
+Vultr 的 `30-oauth-file-io.conf` 为主服务设置 `Environment=CAIO_IMPL=thread`。本机在 systemd 内访问 OAuth 文件时，默认 io_uring 实现曾返回 `Cannot allocate memory`。在独立临时目录里复现故障并验证线程实现后，云端 OAuth 读取恢复。升版时保留该 drop-in，除了探测未登录路由，再从已授权的云端客户端读取一次项目。
+
 **升级 Vultr MCP。** 从第 2 屏开始，先构建、验证并安装到新的 `/opt/multica-backend/releases/<发行号>`。新发行在自己的 venv 安装和执行 `pip check`，期间旧发行继续服务。保留旧发行及对应的原发布包，比较新旧 unit、代理片段和状态库兼容性。
 
 1. 在维护窗口记录当前 `readlink -f /opt/multica-backend/current`、timer 的 active/enabled 状态及尚待确认的请求。暂停新的业务写入。如果恢复 timer 活跃，临时 `systemctl stop multica-backend-recover.timer`，等待已启动的 oneshot 完成。对已发出的请求按原键查 Multica，再停主服务。
@@ -270,6 +298,14 @@ ssh vps-herdr 'sudo /opt/multica-backend/enroll-pat --check && sudo systemctl re
 ## 部署前隔离验证
 
 首轮本机隔离快照的 72 项 MCP 测试通过。发布目录校验、独立 venv 按哈希安装、包依赖检查、合成凭据启动、回环 401 与两类 OAuth 元数据、同一配置和台账的恢复入口均通过。Caddy 片段与 systemd 设定完成静态核对。
+
+## 单笔接单部署回执
+
+2026-11-20 北京时间，Vultr 网关发行 `0.1.0-0732e9516828`、Task Mailbox 发行 `55217ff34402-reader-69c79848b2da` 和项目归属 socket 均已运行并启用开机启动。切换前已在 VPS 受限目录保存上一发行指针及配置、状态库的一致性备份。回环健康检查、未认证的公网 MCP 挑战和两类 OAuth 发现通过；云端已授权连接实际读回了 Mike 和 `fanren-work`。
+
+- 新身份在生产 HTTPS 只看到 `whoami` 和 `get_job`。以网关的 systemd 身份核对原单摘要、实例、项目、收件人和回程成功。当前可见的两个项目均通过原生归属核对。隔离用例另验了新增项目、伪标外部项目、越界收件人以及归属查询中断。
+- 网关包的 87 项测试、含归属检查的 37 项仓库测试通过。在 Vultr 独立网络命名空间用已安装的发行包演练正常接单和丢包后重启，两组各有一张 Issue、一次指派、一个合成 Run、一条接手回执。
+- Mike 的原 Skill 读回为 `workspace-coordination` 1.4.0。真实凡人委托只读，验收时为 `PERSISTED`、结果版本 0，网关中该 job 的绑定数为 0。真实接手、目标 G8 会话调用新增查询和业务验收各自待取证。
 
 ## 2026-11-20 首次生产上线回执
 

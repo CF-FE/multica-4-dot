@@ -1,0 +1,14 @@
+[Unit]
+Description=Multica project scope for Task Mailbox
+
+[Socket]
+ListenStream=/run/multica-mailbox-project.sock
+SocketUser=root
+SocketGroup=task-mailbox
+SocketMode=0660
+Accept=yes
+MaxConnections=8
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

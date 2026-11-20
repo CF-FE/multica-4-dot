@@ -1,0 +1,19 @@
+[Unit]
+Description=Verify a Multica project scope for Task Mailbox
+
+[Service]
+Type=exec
+User=multica-backend
+Group=multica-backend
+LoadCredential=config.json:/etc/multica-backend/config.json
+LoadCredential=multica-pat:/etc/multica-backend/multica-pat
+StandardInput=socket
+StandardOutput=journal
+ExecStart=/opt/multica-backend/current/.venv/bin/python -IB /opt/multica-backend/project-scope.py
+RuntimeMaxSec=8s
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
