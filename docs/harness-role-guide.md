@@ -22,11 +22,26 @@ Decision Service 部署在外网 Vultr VPS，由 `decision-service.service` 监�
 
 **能力评估**　Mike 已有内建 Chief of Staff 系统指令和 Multica CLI 操作指引。2026-11-20 已增量挂载 `multica-backend`，任务归属、按 Run 取证、对账和唤醒规则均以该技能为准。工作区 `task-mailbox` HTTP MCP 已分配给 Mike，配置读回为启用。CLOU-20 补齐授权后，Mike 用 OMP 经 MCP 读取身份、按原 job 取件并发布了 v1。信箱已保存相同版本与摘要的独立读确认。OMP 的 Shell 权限还受 Windows 宿主账户影响，现有配置缺少强制工作区写入隔离的证明。[后端技能](../skills/multica-backend/SKILL.md) · [跨端汇报方案](workflow-reporting.md)
 
+## cloud-work 新增专业角色（2026-11-20）
+
+在工作区的「智能体」中按下表名称查找。四个岗位均允许工作区成员调用，并发各为 1。已逐一读回运行时、实际角色指令及工作区调用范围；Dot 专属账号对试点项目的四次指派预览均命中对应智能体。岗位正文固定自 [Herdr 角色库 1.0.3](https://github.com/CF-FE/herdr-4-codexcloud/blob/742ab342355b32b70e2bac5ab8cc64290d56e23b/docs/worker-library/roles/index.json)。项目负责人、业务验收与跨端回程按原任务办理。
+
+| Multica 名称 | 角色 ID | 工作内容与验证单 |
+|---|---|---|
+| 视觉设计师（mac-work Codex） | `workspace_visual` | 视觉候选、可编辑源和导出后的实物检查。Codex 显式指定工作区写入、网络可用、按需审批。CLOU-24 |
+| 知识管理员（win-work DSH） | `workspace_knowledge` | 依据原件整理索引和冲突清单。使用 Multica 专用 DSH profile 与项目绑定的 Hindsight。CLOU-25 |
+| 产物处理（win-work DSH） | `artifact_processing` | 确定性文件或数据转换，另存输出并核对内容、大小和摘要。CLOU-26 |
+| 辩证复核专员（win-work DSH） | `workspace_dialectic` | 对固定方案做对抗、优化与对齐。需声称独立双线时，应有可追溯的两个独立上下文。CLOU-27 |
+
+三名 DSH 岗位使用已有的 `multica` profile 和 `local-gpt/gpt-6.2-sol`。Hermes 的 ACP 工作目录是工具解析起点，当前 `local` 终端继承 Windows 账号权限。知识管理员采用已有 `workspace-write` 策略的 DSH；角色配置读回与宿主级文件隔离的实测各自记录。[Hermes 工作目录与后端](https://github.com/NousResearch/hermes-agent/blob/09ded63/website/docs/user-guide/profiles.md#L239-L244) · [DSH 项目记忆](win-work-hindsight.md)
+
+**上一轮 win-work Hermes。** 原「Hermes 默认模型验证（win-work）」保留原 ID，盘点时空闲，6 个历史 Run 全部终结（4 完成、1 失败、1 取消）。CLOU-4、12、16、19、23 均已结项，无启用中的 Issue 唤醒。CLOU-16 已验证正常 ACP 首轮记忆注入、按 ID 读取与本库留存；CLOU-19 的单行留存已在限制内重交并读回。CLOU-4 曾在 daemon 重启后自动重试但未恢复交付，后来成功的是独立新会话。修复后版本的故障恢复仍需受控演练。未来升级先对照 CLOU-12 的三处源码适配及备份。原验证 Agent 的模型和推理档位继承运行时，角色本身没有另行分配 Multica Skill 或 MCP。[Hermes 接入证据](hindsight-installation-report-2026-11-20.md)
+
 ## 从角色要交付的结果开始
 
 | 要创建的角色 | 建议首选 | 什么情况下换选或补验 |
 |---|---|---|
-| 质量审查员 · `workspace_quality` | **mac-work Codex**。已有独立审查员能核对原件、退回原执行者、复审并关闭任务，并发已设为 2。 | 需要在 Windows 独有环境复现时，可让执行者提交可复核的产物，或给另一位 Windows 智能体做独立复现。执行者与最终审查者分别留痕。 |
+| 质量审查员 · `workspace_quality` | **win-work DSH**。沿用原审查员 ID，两份工作流都指派同一角色。角色模型为 `local-gpt/gpt-6.2-sol`，推理档位继承 DSH profile，使用 Multica 专用 profile 的 `workspace-write` 策略。 | 先核原件、候选 Run 和必验产物。审查者须独立于被审版本的制作。旧卡 CLOU-1 至 CLOU-3 的审查由当时的 mac-work Codex 执行。 |
 | 研究分析师 · `workspace_research` | **win-work Kimi**。已交付带固定版本源码引用的研究附件。 | 素材只在 Mac 时优先考虑 mac-work Kimi，以同一验收题补一条真实 Run。 |
 | 软件实现工程师 · `software_implementation` | **win-work Kimi**。已有小改动和独立回归测试的成例。任务明确指定 dsh-ops 的文件、搜索或 Bash 工具时选 **win-work DSH**。 | 工作要求由系统强制限制写入时，先取得目标主机的边界实测。两位现有 Kimi 角色使用宿主权限的授权仅适用于这两位。 |
 | 结构化重构、交互调试 · `software_implementation` | **win-work OMP** 是工具匹配的候选。AST、LSP 和 DAP 可提供结构匹配、引用及断点证据。 | 确认目标语言服务和调试器可用。该岗位目前有固定版本架构依据，项目历史案例覆盖的是宿主运维。 |
@@ -111,7 +126,7 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 | mac-work · Kimi | 使用同一套 Kimi 规则。换模型时按模型 ID 查默认档位。 | **`max`**。CLOU-17 的宿主配置指向 `kimi-code/kimi-for-coding`（K2.8 Preview），本次新会话也读到 `thinking_effort=max`。逐请求的推理字段未记录。[Kimi 适配器](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/pkg/agent/kimi.go#L349-L382) |
 | win-work · OMP | 18.22.2 的 `defaultThinkingLevel` 缺省为 **`high`**。配置、模型选择器后缀、模型能力或显式 `--thinking` 会影响取值。 | **运行档位未知**。默认模型验证和近期运维 Run 有 thinking 事件，未找到具体档位字段。[对应版本设置](https://github.com/can1357/oh-my-pi/blob/v18.22.2/docs/settings.md#thinking) · [Multica 启动参数](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/pkg/agent/pi.go#L1228-L1240) |
 | win-work · DSH | 0.2.2-rc.3 的内置 DeepSeek provider 默认 **`high`**。使用其他 provider 时查看实际模型在专用 profile 中公布的 `default_level` 和支持的档位。 | **运行档位未知**。已查的默认模型验证和 DSH 任务记录没有给出有效档位。[固定 RC 的 DeepSeek provider](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.2-rc.3/packages/llm/llm-deepseek/README.md) · [Multica 适配器](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/pkg/agent/dsh.go#L432-L468) |
-| mac-work / win-work · Codex | 可用档位取决于运行时和选中模型的目录。 | **运行档位未知**。Mac 审查员的已完成 Run 未提供具体 effort；Windows Codex 在本次盘点中没有绑定角色可供核对。 |
+| mac-work / win-work · Codex | 可用档位取决于运行时和选中模型的目录。 | Mac 原审查员的历史 Run 没有记录具体档位。CLOU-19 在 Windows Codex 上试用 `gpt-6-luna / medium`，角色配置已读回，沙箱启动 PowerShell 失败。该试跑没有形成审查结论。 |
 
 **查原始证据。** 在 Multica 的「Multica 运行时验证」项目中查看 CLOU-16 的 Run `01a1f6e9-96be-735c-b31a-fdf0255eec92`、CLOU-17 的 Run `01a1f6e5-81f5-75b7-99b2-244fc6e2e8e6` 和 CLOU-18 的 Run `01a1f6eb-8670-7886-a598-133fcc335a10`。在 Hindsight 的 `multica-4-dot` bank 中，云端 Dot 的原始调查 ID 为 `multica-v0-11-0-harness-thinking-defaults-2026-11-20`，本次合并回执 ID 为 `multica-harness-effective-thinking-levels-20261120`。
 
@@ -140,7 +155,7 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 
 | 有价值的变化 | 什么时候值得 | 什么时候保持简单 |
 |---|---|---|
-| 普通实现交给 Kimi，结构化重构或深度调试选 OMP，独立复审沿用 mac-work Codex。 | 跨文件语法模式、高频符号导航、断点或变量观察是交付条件时，OMP 的 AST、LSP、DAP 能直接提供证据。 | 单文件小改且已有回归断言时，沿用现有 Kimi 实现角色。一次修复若还要再启 Advisor 和一位正式审查员，先判断第二次审阅能否发现不同类别的问题。 |
+| 普通实现交给 Kimi，结构化重构或深度调试选 OMP，独立复审交 win-work DSH 审查员。 | 跨文件语法模式、高频符号导航、断点或变量观察是交付条件时，OMP 的 AST、LSP、DAP 能直接提供证据。 | 单文件小改且已有回归断言时，沿用现有 Kimi 实现角色。一次修复若还要再启 Advisor 和一位正式审查员，先判断第二次审阅能否发现不同类别的问题。 |
 | 把符合稳定输入输出的重复步骤交给脚本或 DSH 工具，把需要判断的步骤交给模型。 | 跨任务复用同一工具、需要逐项留痕或精简工具返回时，DSH 专用 profile 的维护成本容易摊薄。 | 一次性文件操作可复用现有角色和工具。安装插件、升级共享 profile 或建立常驻服务需要有持续需求或可衡量收益。 |
 | 用 Hermes 做跨会话分诊、巡检交接和知识维护，平台只保留一个任务调度者。 | 任务会反复使用同一经验，或确实需要定时触发、经授权的跨渠道送达。固定采集和统计交给脚本，Hermes 解释异常和引用历史。 | 单次问答、固定格式转换或批量分类优先采用现有对话或脚本。Windows 高权限操作已有 OMP 路径，从 Hermes 再嵌套一个 OMP 会增加第二套身份、日志与取消处理。只有独立收益清楚时再考虑。 |
 
@@ -200,3 +215,4 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 | 2026-11-20 | 按公子确认登记工作区协调员 Mike，核对原生岗位、OMP 绑定、CLOU-4 回报和待加强的技能与跨端回执。 |
 | 2026-11-20 | 整合云端 Dot 的原生默认档位调查与 CLOU-16、17、18 的新会话证据，补入按主机对照和 Token 估算口径。 |
 | 2026-11-20 | CLOU-23 核对 CLOU-12/16 的原件，修订知识维护岗位、运行时表和 Hermes 选型说明。Multica 派发已验，主机故障后自动恢复待验。 |
+| 2026-11-20 | 独立审查迁至 win-work DSH。CLOU-19 首次业务工具调用约 18 秒，8 分 29 秒回写独立审查报告，5 项通过。原 mac-work 四次超时和 Windows Codex 沙箱失败均保留在历史 Run。 |
