@@ -1,0 +1,17 @@
+{
+  "display_name": "Multica Backend",
+  "transport": "streamable-http",
+  "server_url": null,
+  "oauth": {
+    "protected_resource_metadata_url": null,
+    "issuer": null,
+    "client_registration_mode": null,
+    "host_redirect_uri": null,
+    "verified_scopes": null
+  },
+  "native_registration": {
+    "plugin_id": null,
+    "app_id": null,
+    "current_release_id": null
+  }
+}

@@ -1,0 +1,23 @@
+name: Check upstream Multica releases
+
+on:
+  schedule:
+    - cron: '23 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-releases:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test with offline fixtures
+        run: python3 -m unittest discover -s tests -p test_multica_release.py
+      - name: Read upstream releases and write the job summary
+        shell: bash
+        run: python3 scripts/check_multica_release.py | tee -a "$GITHUB_STEP_SUMMARY"

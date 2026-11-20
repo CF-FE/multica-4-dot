@@ -1,0 +1,19 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "multica-backend",
+  "version": "0.1.0",
+  "description": "Find Multica projects and coordinators, inspect work, and track authorized assignments.",
+  "extensions": {
+    "com.openai": {
+      "apps": "./.app.json",
+      "interface": {
+        "displayName": "Multica Backend",
+        "shortDescription": "Multica task coordination",
+        "longDescription": "Find the current coordinator, inspect Issues and Runs, and reconcile authorized assignments against their original records.",
+        "category": "Productivity",
+        "capabilities": [],
+        "defaultPrompt": "Find the current coordinator for the specified Multica workspace and project. Use read-only tools."
+      }
+    }
+  }
+}

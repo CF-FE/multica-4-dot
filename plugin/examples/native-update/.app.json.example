@@ -1,0 +1,7 @@
+{
+  "apps": {
+    "multica-backend": {
+      "id": "<COPY_FROM_CURRENT_NATIVE_APP_BINDING>"
+    }
+  }
+}

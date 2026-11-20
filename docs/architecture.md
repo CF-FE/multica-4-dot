@@ -4,6 +4,8 @@
 
 后端访问方式及 Decision MCP / GitHub Projects 边界见 [v0.2 接入决策](backend-integration.md)。
 
+2026-11-20 更新。工作流转向 Multica、Mac 协调桥退役范围和跨端汇报的候选设计见[工作流、通知与跨端汇报方案](workflow-reporting.md)。下文保留 v0.1 的提案背景。
+
 ## 目标与非目标
 
 让云端 Dot 能有边界地查看 Multica Issue 和 Run，之后在授权范围内做单次派发与收件。保留现有 Task Mailbox 和协调层，能追溯、能对账、能撤回。首期不迁移生产任务，不自动同步两套看板，不开放原始日志，不开通实时事件或写操作。

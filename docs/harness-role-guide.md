@@ -1,10 +1,26 @@
 # Multica 角色创建与 Harness 选型指南
 
-在 Multica 新建或调整智能体时，用本文选主机、运行时、工具和验收任务。角色职责取自 Herdr 角色库，宿主能力以目标机器上的实测为准。本文是本仓库的选型主文档，后续直接更新同一文件。当前范围为 `cloud-work` 的 mac-work 和 win-work，按项目约定暂不纳入 Claude。基线为 Multica v0.10.0，最近核对日期为 2026-11-18，本文时间均为北京时间。[角色库索引（1.0.3）](https://github.com/CF-FE/herdr-4-codexcloud/blob/742ab342355b32b70e2bac5ab8cc64290d56e23b/docs/worker-library/roles/index.json)
+在 Multica 新建或调整智能体时，用本文选主机、运行时、工具和验收任务。角色职责取自 Herdr 角色库，宿主能力以目标机器上的实测为准。本文是本仓库的选型主文档，后续直接更新同一文件。当前范围为 `cloud-work` 的 mac-work 和 win-work，按项目约定暂不纳入 Claude。选型基线为 2026-11-18 的 Multica v0.10.0。工作区协调员条目于 2026-11-20 按 v0.11.0 实例核对，本文时间均为北京时间。[角色库索引（1.0.3）](https://github.com/CF-FE/herdr-4-codexcloud/blob/742ab342355b32b70e2bac5ab8cc64290d56e23b/docs/worker-library/roles/index.json)
 
-**快速索引**　[按岗位选](#从角色要交付的结果开始) · [两端版本与实测](#两端实际登记的运行时) · [按架构问题查](#架构比较) · [速度与 Token](#速度与-token) · [实际推理档位](#实际推理档位) · [推荐分工](#推荐分工与换选条件) · [创建与验收](#建一个可以验收的角色) · [按来源查](#资料索引) · [新增或升级](#新增升级或停用时怎样更新本文)
+**快速索引**　[找 Mike](#工作区协调员-mike) · [按岗位选](#从角色要交付的结果开始) · [两端版本与实测](#两端实际登记的运行时) · [按架构问题查](#架构比较) · [速度与 Token](#速度与-token) · [实际推理档位](#实际推理档位) · [推荐分工](#推荐分工与换选条件) · [创建与验收](#建一个可以验收的角色) · [按来源查](#资料索引) · [新增或升级](#新增升级或停用时怎样更新本文)
 
 **按 Harness 查**　[Codex](#codex) · [Kimi](#kimi) · [OMP / Oh My Pi](#omp) · [DSH / DeepSeek Harness](#dsh) · [Hermes](#hermes)
+
+## 工作区协调员 Mike
+
+G8 向各工作区协调员交办的统一约定见[职责与协作规范](../skills/workspace-coordination/SKILL.md)。本节登记 `cloud-work` 的现任人员和运行时。
+
+新工作区上线时，由建立者核对本工作区的协调员及原生 ID，向该协调员分配同一份 `workspace-coordination`、适用的后端技能、Task Mailbox 和 Decision Service MCP。可复用服务 URL，OAuth 要在实际调用的身份和运行时完成。登记已接手的原 Issue、可读回的决定和回报作为该工作区的接入证据。更换协调员时，连同在途任务和回程交给新任。
+
+任命项目负责人时也默认装配 Decision Service MCP。先读项目的 `lead_type` 与 `lead_id`。Agent 负责人使用同一工作区已有的 MCP 条目增量分配并读回；成员负责人在其实际客户端接入。公子已就这项业务使用作常设授权。2026-11-20 的 `cloud-work` 盘点中，原生项目的这两个字段均为空。
+
+Decision Service 部署在外网 Vultr VPS，由 `decision-service.service` 监听回环端口 8768，对外服务路径为 `/decision-service/mcp`。2026-11-20 已核对生产单元运行状态和云端决定读回。[服务部署说明](https://github.com/CF-FE/decision-service/blob/main/docs/deployment.md)
+
+**找人入口**　进入 `cloud-work → 智能体 → Mike`。名片登记为“工作区协调员（Chief of Staff）”。跨智能体分工、项目任务派发、阻塞跟进及复审交接找 Mike。需留存的事项从所属项目的原 Issue 交办，验收人仍以原任务约定为准。按 `system_key=mika` 可识别内置岗位，显示名、绑定和可调用范围以工作区智能体详情为准。
+
+**当前绑定与证据**　2026-11-20 回读为 win-work OMP，模型配置 `cli-proxy-chat/gpt-6.2-sol`，允许工作区成员调用，并发 3。CLOU-4 的原卡及回合记录显示，Mike 汇总了多个运行时的结果，指出待补的验收证据，并按公子确认的标准回报结项。建议沿用这位协调员及其原有绑定。Hermes 的记忆与跨会话分诊、DSH 的流程工具可由专项岗位使用。
+
+**能力评估**　Mike 已有内建 Chief of Staff 系统指令和 Multica CLI 操作指引。2026-11-20 已增量挂载 `multica-backend`，任务归属、按 Run 取证、对账和唤醒规则均以该技能为准。工作区 `task-mailbox` HTTP MCP 已分配给 Mike，配置读回为启用。CLOU-20 补齐授权后，Mike 用 OMP 经 MCP 读取身份、按原 job 取件并发布了 v1。信箱已保存相同版本与摘要的独立读确认。OMP 的 Shell 权限还受 Windows 宿主账户影响，现有配置缺少强制工作区写入隔离的证明。[后端技能](../skills/multica-backend/SKILL.md) · [跨端汇报方案](workflow-reporting.md)
 
 ## 从角色要交付的结果开始
 
@@ -181,4 +197,5 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 |---|---|
 | 2026-11-18 | 首版。基于 Multica v0.10.0 双端登记、CLOU-1 至 CLOU-3、CLOU-5 至 CLOU-10 与 Hermes 本机会话。 |
 | 2026-11-18 | 增补五种执行架构、角色选型取舍、按问题与来源检索，记录 Hermes 文章与实装的版本差异、两项公开性能实验与换选条件。 |
+| 2026-11-20 | 按公子确认登记工作区协调员 Mike，核对原生岗位、OMP 绑定、CLOU-4 回报和待加强的技能与跨端回执。 |
 | 2026-11-20 | 整合云端 Dot 的原生默认档位调查与 CLOU-16、17、18 的新会话证据，补入按主机对照和 Token 估算口径。 |

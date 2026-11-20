@@ -1,0 +1,22 @@
+[Unit]
+Description=Report registered Multica terminal runs to Task Mailbox
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=multica-reporter
+Group=multica-reporter
+UMask=0077
+StateDirectory=multica-run-reporter
+StateDirectoryMode=0700
+LoadCredential=multica.token:/etc/multica-run-reporter/multica.token
+LoadCredential=mailbox.token:/etc/multica-run-reporter/mailbox.token
+ExecStart=/usr/bin/python3 -IB /usr/local/lib/multica-run-reporter/run_reporter.py --config /etc/multica-run-reporter/config.json --database /var/lib/multica-run-reporter/state.sqlite3
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=yes
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=

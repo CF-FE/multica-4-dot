@@ -1,0 +1,33 @@
+services:
+  reader:
+    image: multica-run-reader:pg17
+    build:
+      context: .
+      args:
+        POSTGRES_IMAGE: ${POSTGRES_IMAGE:-pgvector/pgvector:pg17}
+        DEBIAN_MIRROR: ${DEBIAN_MIRROR:-http://deb.debian.org}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /var/lib/postgresql/data:ro,noexec,nosuid,nodev,size=64k
+    pids_limit: 16
+    mem_limit: 64m
+    ports:
+      - "127.0.0.1:${MULTICA_READER_PORT:-18081}:8080"
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ${MULTICA_DB_NAME:-multica}
+      PGUSER: multica_report_reader
+      PGCONNECT_TIMEOUT: "3"
+      PGPASSFILE: /run/reader/pgpass
+    volumes:
+      - /etc/multica-run-reader/http.sha256:/run/reader/http.sha256:ro
+      - /etc/multica-run-reader/pgpass:/run/reader/pgpass:ro
+    networks: [multica]
+networks:
+  multica:
+    external: true
+    name: ${MULTICA_DOCKER_NETWORK:-multica_default}

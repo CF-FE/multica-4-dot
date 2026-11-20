@@ -18,4 +18,6 @@ metadata:
 
 从本侧发起的 Multica 任务，创建时必须归入目标 workspace 内的一个项目。子任务、返工和验收沿用原项目。独立工作优先复用交付目标相符的现有项目，确认没有合适项目时先建一个，再以 `--project <project-id>` 建单。项目归属有歧义时先澄清。创建响应不明时先对账。创建后读回 Issue 的 `project_id`，与预期一致才确认归属。
 
+创建新项目或调整 Agent 的决策 MCP 分配后，将原生项目或 Agent ID 交给授权管理员，按 `workspace-coordination` 的项目登记与角色任免规则同步独立服务身份。决策请求使用真实项目 UUID。普通项目建单、执行和复审沿原工作流办理。
+
 按需打开 [v0.11.0 CLI 命令总表](references/cli-v0.11.0.md)核对命令及可能的副作用，具体参数以目标二进制的 `--help` 为准。旧部署可查 [v0.10.0](references/cli-v0.10.0.md) 和 [v0.9.0](references/cli-v0.9.0.md) 的历史总表。

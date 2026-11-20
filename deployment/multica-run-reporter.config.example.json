@@ -1,0 +1,16 @@
+{
+  "multica_origin": "https://reader.example.invalid",
+  "mailbox_api": "https://mailbox.example.invalid/mailbox/api/v1",
+  "workspace_id": "00000000-0000-4000-8000-000000000001",
+  "project_id": "00000000-0000-4000-8000-000000000002",
+  "mailbox_project_id": "example-mailbox-project",
+  "source_id": "example-run-observer",
+  "watches": [
+    {
+      "issue_id": "00000000-0000-4000-8000-000000000003",
+      "run_id": "00000000-0000-4000-8000-000000000004",
+      "task_id": "example-task",
+      "job_id": "example-job"
+    }
+  ]
+}

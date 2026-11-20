@@ -2,6 +2,8 @@
 
 创建 Multica 任务时遵循后端 Skill 的[任务项目归属规范](skills/multica-backend/SKILL.md#任务项目归属)。
 
+G8 跨项目协调、向任一工作区协调员交办、使用 Decision MCP 和回报时遵循[职责与协作规范](skills/workspace-coordination/SKILL.md)。新工作区按现任协调员登记接入。
+
 ## Runtime and Agent Defaults
 
 - 公子于 2026-11-16 明确确认：后续配置 Multica 智能体及运行时，默认启用工具，执行权限限定为工作区（`workspace-write` 或运行时的等价模式）。

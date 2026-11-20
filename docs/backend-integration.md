@@ -1,6 +1,18 @@
-# 后端接入决策 · v0.2 提案
+# Multica Backend MCP 决策与任务
 
-这是对 v0.1 的增量收敛：不改变部署落点、生产巡检和权限。当前只交付 Skill 与参考资料，未接实际实例、未增开插件权限。
+云端 Dot 直接操作 Multica 的完整方案由以下五项决策共同定义。各项状态见正文。跨仓的信箱、岗位和基础设施约定仍由原记录维护。[任务、依赖与复核](multica-backend-tasks.md)
+
+| 决策 | 回答的问题 |
+|---|---|
+| [ADR-001　Dot 直连与组件分工](decisions/001-dot-multica-gateway.md) | 为什么建独立 MCP，哪个系统持有项目、指令、Run 和结果 |
+| [ADR-002　身份与工作区](decisions/002-identity-and-workspaces.md) | G8 如何取得并使用跨项目业务权，新增工作区、任命或换任时如何找对人 |
+| [ADR-003　命令交付与运行控制](decisions/003-command-delivery.md) | 怎样处理重复交办、响应丢失、静默备注、改派、取消和重跑 |
+| [ADR-004　跨端报告与恢复](decisions/004-reporting-and-recovery.md) | 如何回原 job，如何识别未受理、运行异常、待汇报、已读与待验收 |
+| [ADR-005　上游版本与兼容](decisions/005-upstream-compatibility.md) | 如何发现正式发行、复核受影响的能力、升级和回退 |
+
+## v0.2 历史提案
+
+以下保留 v0.2 当时以只读查询起步的依据。此后的实际部署、回执和角色变更见[工作流实施记录](workflow-reporting.md)。
 
 ## REST 会更稳吗？
 
