@@ -54,11 +54,22 @@ def main():
     options = parser.add_mutually_exclusive_group()
     options.add_argument("--replace", action="store_true", help="replace a previously enrolled PAT")
     options.add_argument("--check", action="store_true", help="verify the stored PAT without printing it")
+    parser.add_argument("--instance", default="tencent", help="enrolled instance in the service configuration")
     args = parser.parse_args()
     if os.geteuid() != 0 or DIRECTORY.is_symlink() or DIRECTORY.stat().st_uid != 0 or DIRECTORY.stat().st_mode & 0o077:
         parser.exit(1, "Use the root-owned private configuration directory.\n")
-    target = json.loads((DIRECTORY / "pat-target.json").read_text())
-    path = DIRECTORY / "multica-pat"
+    config = DIRECTORY / "config.json"
+    if config.exists():
+        target = json.loads(config.read_text())["instances"][args.instance]
+        credential = target.get("pat_credential")
+        if not credential or Path(credential).name != credential or credential in {".", ".."}:
+            parser.exit(1, "This instance does not use a named systemd credential.\n")
+    elif args.instance == "tencent":
+        target = json.loads((DIRECTORY / "pat-target.json").read_text())
+        credential = "multica-pat"
+    else:
+        parser.exit(1, "Enroll this instance in config.json first.\n")
+    path = DIRECTORY / credential
     if path.is_symlink():
         parser.exit(1, "Refusing a credential symlink.\n")
     if args.check:
@@ -85,7 +96,7 @@ def main():
                 os.link(staged, path)
         finally:
             staged.unlink(missing_ok=True)
-    print("PAT saved with mode 0600 and verified against the enrolled Multica account.")
+    print("PAT saved with mode 0600 and verified. Restart the active multica-backend.service to load it.")
 
 
 if __name__ == "__main__":

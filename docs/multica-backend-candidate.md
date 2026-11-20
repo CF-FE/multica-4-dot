@@ -18,6 +18,12 @@ python3 scripts/check_multica_candidate.py --isolated
 
 两种有报告的模式输出一行 JSON。可读取 `evidence`、`versions[].tag`、`versions[].commit`、`versions[].checks` 和 `release_image_compatibility`。退出码 `0` 表示该证据层面的全部检查通过，`1` 表示至少一项有失败证据，`2` 表示前置条件或证据不全。发行镜像在这两个模式下均显示 `unknown`。
 
+### GitHub 托管隔离运行
+
+仓库启用 GitHub Actions，且[候选验证工作流](../.github/workflows/check-multica-candidate.yml)进入默认分支后，有仓库写权限的操作者可在 **Actions → Check Multica candidate in isolation → Run workflow** 选择包含已审定版本清单的分支。首次运行选择默认分支 `main`，也可使用 `gh workflow run check-multica-candidate.yml --ref main`。触发事件仅为 `workflow_dispatch`。[GitHub 手动触发说明](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
+
+工作流在 GitHub 托管的 Ubuntu 24.04 上用固定 Go 1.26.9 执行 `--isolated`，限时 45 分钟。每次运行使用所选提交中的版本清单和 runner 自身的 Docker daemon。打开该次运行的 **Summary** 查看原始 JSON 和脚本退出码，脚本返回非零时检查步骤失败。GitHub 托管执行待首次触发取证。[托管 Ubuntu 软件清单](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md)
+
 ## 原生用例和对账条件
 
 | 检查 | 通过条件 |
@@ -31,5 +37,5 @@ python3 scripts/check_multica_candidate.py --isolated
 ## 本轮证据与待验条件
 
 - `v0.11.0` 和 `v0.11.1` 固定源码各通过三项核对，覆盖路由、Issue 范围 Run 读取、`/note` 与 `trigger_outcomes`。GitHub API 配额耗尽后，通过 SHA-256 校验的本地源码快照复验。两版评论 handler 的源文件相同。HTTP 状态、真实用例写入和排队结果待运行原生用例。
-- 本机 Docker CLI 缺少可访问的 daemon socket。尝试启动一次性 Colima profile 时，现有 x86_64 构建要求缺失的 QEMU，未启动虚拟机。运行器预检返回 `2`，两版原生检查均标为 `unknown`。下一次实测需要由公子启动或指定有权使用的本地临时 Docker daemon。测试账号及凭据由上游 fixture 和运行器生成。
+- 本机 Docker CLI 缺少可访问的 daemon socket。尝试启动一次性 Colima profile 时，现有 x86_64 构建要求缺失的 QEMU，未启动虚拟机。运行器预检返回 `2`，两版原生检查均标为 `unknown`。后续可通过 GitHub 托管工作流或有权使用的本地临时 Docker daemon 实测。测试账号及凭据由上游 fixture 和运行器生成。
 - 发行镜像、真实 Daemon 的接单运行、G8 专属账号及完整 MCP 写动作清单需各自的隔离环境和观察证据。双版本原生测试的通过范围是上表五项，`queued` 对账截止于服务端 Run 创建。[任务 J 与生产验收范围](multica-backend-tasks.md)

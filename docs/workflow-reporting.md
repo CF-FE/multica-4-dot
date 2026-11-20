@@ -102,3 +102,9 @@ python3 deployment/decision-access/sync-agents.py --workspace e25be43b-82b6-419d
 退任时先禁用该 Agent 的决策 MCP 条目，再在同一命令中加 `--revoke-agent <agent-uuid> --apply`，撤销服务端凭据并从角色环境删除对应变量。服务端策略发生变化时会重启 Decision Service 并检查健康，健康检查失败则恢复原配置。授权同步由项目创建和角色任免的操作者触发。系统管理员依照宿主与 Multica 管理权限维护凭据。
 
 **授权复验通过。** Mike 使用独立身份，在原请求和同一候选快照上取得决定 `4d6ade30-7522-4262-9f65-47b9a6e734c4`。选中的 `mailbox_only` 对应实际动作：核对 CLOU-21 的原始交付与额外入队证据，向 CLOU-22 发起者回执。该 Run 为 `01a1f7d0-3b2a-724e-b158-fc4c0fadc758`。首次反馈因缺少 v1 覆盖范围和业务字段被拒；Mike 在后续 Run `01a1f7d5-994b-7d6d-a017-330fac7b981f` 仅补传反馈。服务端按独立身份、项目和原请求精确查到一条决定及两项反馈，`application` 回执为 `fd45f002-6f32-494a-be64-ce9dd8cae023`，`result` 为 `7295eda0-5400-46b0-9a52-faeadaebb87e`。发起者核验后将 CLOU-22 置为 `done`。本卡没有派发复审，另一候选留作未执行分支。协作 Skill 已随附[反馈字段参考](../skills/workspace-coordination/references/decision-feedback.md)。[验收原卡](http://10.207.56.3:3000/cloud-work/issues/CLOU-22)
+
+### 从执行中主动推进
+
+执行者在接单、原假设失效或准备交付时，依[协作规范 1.3.0](../skills/workspace-coordination/SKILL.md#当前-issue-的下一步由谁执行)判断下一步。已知规则能选路就执行，缺一条事实就先核原件。局部受阻时先完成不依赖它的部分，实质取舍按权限就地处理或交协调员。真正等待外部条件的卡片要写清解除条件、责任人和恢复动作，再用适合的事件唤醒。业务动作已完成时，反馈错误只补原事件。
+
+项目的「执行中」允许不同执行者承接。v0.11.0 对没有固定处理人的步骤会清空自定义处理说明。因此普通执行者从项目说明随 Run 注入的上下文读取这条约定，「待决策」和「审核中」保留各自的阶段指令。切换预检显示 18 张原卡、0 条状态迁移。

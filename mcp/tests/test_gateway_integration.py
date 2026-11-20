@@ -14,7 +14,10 @@ from multica_backend.gateway import Gateway, Instance, TOOL_CATALOG, Workspace
 from multica_backend.mailbox import MailboxError
 from multica_backend.server import build_app
 from test_gateway_http import LoopbackOAuth, request, serve_loopback
-from test_native_dispatch import COORDINATOR, INSTANCE, MAILBOX, PROJECT, PROPERTY, TOKEN, USER, WORKSPACE, Fixture, FixtureHandler
+from test_native_dispatch import (
+    COORDINATOR, INSTANCE, ISSUE, MAILBOX, OTHER, PROJECT, PROPERTY, TOKEN, USER, WORKSPACE,
+    Fixture, FixtureHandler,
+)
 
 
 PRINCIPAL = "github:1002"
@@ -98,6 +101,31 @@ class IntegratedGatewayTest(unittest.TestCase):
         duplicate = self.gw.call(PRINCIPAL, "dispatch_issue", {**NEW, "request_id": str(UUID(int=801))})
         self.assertEqual(duplicate["error"]["code"], "request_conflict")
         self.assertEqual(len(self.native.creates), 1)
+
+    def test_metadata_only_historical_issue_links_without_configured_properties(self):
+        scope = Workspace(COORDINATOR, None, "workspace-coordinator")
+        instance = replace(self.inst, workspaces={WORKSPACE: scope})
+        gateway = Gateway({INSTANCE: instance}, self.path)
+        self.native.empty_property_catalog = True
+        self.native.add_issue(ISSUE, {}, creator_id=OTHER, metadata={"task_mailbox_job_id": JOB["job_id"]})
+        self.mailbox.version = 1
+        linked = gateway.call(PRINCIPAL, "dispatch_issue", {
+            **SCOPE, "request_id": REQ, "original_issue_id": ISSUE, "mailbox": JOB,
+        })
+        self.assertEqual((linked.get("state"), linked.get("issue", {}).get("issue_id")), ("confirmed", ISSUE), linked)
+        self.assertFalse(self.native.creates)
+        self.assertFalse(self.native.previews)
+
+    def test_metadata_only_historical_issue_blocks_new_dispatch_before_property_setup(self):
+        scope = Workspace(COORDINATOR, None, "workspace-coordinator")
+        instance = replace(self.inst, workspaces={WORKSPACE: scope})
+        gateway = Gateway({INSTANCE: instance}, self.path)
+        self.native.empty_property_catalog = True
+        self.native.add_issue(ISSUE, {}, creator_id=OTHER, metadata={"task_mailbox_job_id": JOB["job_id"]})
+        found = gateway.call(PRINCIPAL, "dispatch_issue", NEW)
+        self.assertEqual(found["error"]["code"], "legacy_mailbox_issue_exists")
+        self.assertFalse(self.native.creates)
+        self.assertFalse(self.native.previews)
 
     def test_restart_after_response_loss_and_revoked_scope(self):
         self.native.drop_create_reply = True

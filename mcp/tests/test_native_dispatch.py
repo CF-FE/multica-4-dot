@@ -74,6 +74,8 @@ class FixtureHandler(BaseHTTPRequestHandler):
             return self.reply(200, {"statuses": state.statuses, "total": len(state.statuses)})
         if path == "/api/issue-workflows/" + WORKFLOW:
             return self.reply(200, state.workflow)
+        if path.startswith("/api/properties/") and state.empty_property_catalog:
+            return self.reply(404, {"error": "property not found"})
         if path == "/api/properties/" + PROPERTY:
             return self.reply(200, state.property)
         if path == "/api/properties/" + MAILBOX:
@@ -102,6 +104,8 @@ class FixtureHandler(BaseHTTPRequestHandler):
                 return self.reply(404, {"error": "issue missing"})
             if state.corrupt_detail:
                 issue = {**issue, "properties": {}}
+            if state.hide_metadata_from_detail:
+                issue = {**issue, "metadata": {}}
             if state.hide_mailbox_from_detail:
                 issue = {**issue, "properties": {key: value for key, value in issue["properties"].items() if key != MAILBOX}}
             return self.reply(200, issue)
@@ -172,6 +176,8 @@ class Fixture:
         self.drop_create_reply = False
         self.hide_list_rows = False
         self.corrupt_detail = False
+        self.empty_property_catalog = False
+        self.hide_metadata_from_detail = False
         self.hide_mailbox_from_detail = False
         self.incomplete_lookup = False
         self.create_started = None
@@ -328,6 +334,65 @@ class NativeDispatchTest(unittest.TestCase):
                 self.assertFalse(self.fixture.creates)
                 explicit = replace(MAIL_COMMAND, new_issue=None, original_issue_id=ISSUE)
                 self.assertEqual(self.dispatch.lookup(explicit, "").issue_id, ISSUE)
+
+    def test_metadata_only_clou21_shape_blocks_create_and_links_by_exact_original_without_properties(self):
+        self.fixture.empty_property_catalog = True
+        self.dispatch = MulticaDispatch(
+            self.http, instance_id=INSTANCE, expected_user_id=USER, correlation_property_id=None,
+        )
+        command = replace(MAIL_COMMAND, mailbox_job_id="g8-to-workspace-coordinator-fixture")
+        self.fixture.add_issue(
+            ISSUE, {}, identifier="CLOU-21", creator_id=OTHER,
+            metadata={"task_mailbox_job_id": command.mailbox_job_id, "historical_note": "synthetic fixture"},
+        )
+
+        with self.assertRaises(NativeHTTPError) as found:
+            self.deliver(command)
+        self.assertEqual(found.exception.code, "legacy_mailbox_issue_exists")
+        self.assertEqual(self.ledger.get(PRINCIPAL, REQUEST).state, "accepted")
+        self.assertEqual(self.fixture.queries[0][0], {"task_mailbox_job_id": [command.mailbox_job_id]})
+        self.assertIn(("GET", f"/api/issues/{ISSUE}"), self.fixture.calls)
+        self.assertFalse(self.fixture.creates)
+        self.assertFalse(self.fixture.previews)
+        self.assertFalse(any(path.startswith("/api/properties/") for _, path in self.fixture.calls))
+
+        original = replace(command, new_issue=None, original_issue_id=ISSUE)
+        self.assertEqual(self.dispatch.lookup(original, "").issue_id, ISSUE)
+
+    def test_metadata_match_requires_exact_string_same_project_and_detail_readback(self):
+        self.dispatch = MulticaDispatch(
+            self.http, instance_id=INSTANCE, expected_user_id=USER, correlation_property_id=None,
+        )
+        job_id = MAIL_COMMAND.mailbox_job_id
+        self.fixture.add_issue(ISSUE, {}, project_id=OTHER, creator_id=OTHER, metadata={"task_mailbox_job_id": job_id})
+        self.fixture.add_issue(str(UUID(int=70)), {}, metadata={"task_mailbox_job_id": job_id + "-suffix"})
+        with self.assertRaises(NativeHTTPError) as missing:
+            self.deliver(MAIL_COMMAND)
+        self.assertEqual(missing.exception.code, "missing_dispatch_property")
+        original = replace(MAIL_COMMAND, new_issue=None, original_issue_id=ISSUE)
+        with self.assertRaises(NativeHTTPError) as cross_scope:
+            self.dispatch.lookup(original, "")
+        self.assertEqual(cross_scope.exception.code, "scope_mismatch")
+
+        self.fixture.issues[ISSUE]["project_id"] = PROJECT
+        self.fixture.hide_metadata_from_detail = True
+        with self.assertRaises(UnverifiedIssue):
+            self.deliver(MAIL_COMMAND)
+        with self.assertRaises(UnverifiedIssue):
+            self.dispatch.lookup(original, "")
+        self.assertFalse(self.fixture.creates)
+
+    def test_incomplete_metadata_search_stops_before_any_write_or_property_check(self):
+        self.dispatch = MulticaDispatch(
+            self.http, instance_id=INSTANCE, expected_user_id=USER, correlation_property_id=None,
+        )
+        self.fixture.incomplete_lookup = True
+        with self.assertRaises(NativeHTTPError) as lookup:
+            self.deliver(MAIL_COMMAND)
+        self.assertEqual(lookup.exception.code, "incomplete_lookup")
+        self.assertEqual(self.ledger.get(PRINCIPAL, REQUEST).state, "accepted")
+        self.assertFalse(self.fixture.creates)
+        self.assertFalse(self.fixture.previews)
 
     def test_receipt_requires_request_and_mailbox_markers_from_same_detail(self):
         self.fixture.hide_mailbox_from_detail = True

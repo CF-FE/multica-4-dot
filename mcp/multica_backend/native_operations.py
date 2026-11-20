@@ -22,6 +22,10 @@ _BOOLEAN = {"type": "boolean"}
 _PRIORITY = _enum("urgent", "high", "medium", "low", "none")
 _DATE = {"type": ["string", "null"], "format": "date"}
 _REVISION = {"type": "integer", "minimum": 1, "maximum": 2**63 - 1}
+_PAGINATION = {
+    "limit": {"type": "integer", "minimum": 1, "maximum": 100},
+    "offset": {"type": "integer", "minimum": 0, "maximum": 1_000_000},
+}
 _ACTIVE = {"queued", "dispatched", "running", "waiting_local_directory"}
 _TERMINAL = {"completed", "failed", "cancelled"}
 _PROJECT_FIELDS = {
@@ -46,9 +50,10 @@ def _tool(name, description, *, read_only=False, required=(), **fields):
 
 OPERATION_TOOLS = [
     _tool("get_workspace", "Read one configured Multica workspace.", read_only=True),
-    _tool("list_projects", "List a bounded page of visible projects in one workspace.", read_only=True,
-          limit={"type": "integer", "minimum": 1, "maximum": 100},
-          offset={"type": "integer", "minimum": 0, "maximum": 1_000_000}),
+    _tool("list_projects", "List a bounded page of visible projects in one workspace.", read_only=True, **_PAGINATION),
+    _tool("list_issues", "List Issue summaries in one verified project, newest first. Continue at next_offset.",
+          read_only=True, required=("project_id",), project_id=_UUID, **_PAGINATION,
+          status={**_TEXT, "description": "An exact active status key from the workspace's native catalog."}),
     _tool("get_coordinator", "Read this workspace's configured coordinator and verify its native Agent.", read_only=True),
     _tool("create_project", "Create a workspace-visible project with optional priority, deadline and lead.",
           required=("title",), **_PROJECT_FIELDS),
@@ -60,7 +65,8 @@ OPERATION_TOOLS = [
           assignee_id=_NULLABLE_UUID, start_run=_BOOLEAN),
     _tool("add_issue_note", "Save a top-level /note that suppresses agent triggering.",
           required=("project_id", "issue_id", "content"), project_id=_UUID, issue_id=_UUID, content=_TEXT),
-    _tool("steer_run", "Submit a supplement to the exact running Run. Its native support and delivery state apply.",
+    _tool("steer_run", "Use the dedicated supplement route to bind a message to this exact running Run. "
+          "A successful submission adds an Issue history comment; delivery depends on the running agent.",
           required=("project_id", "issue_id", "run_id", "content"),
           project_id=_UUID, issue_id=_UUID, run_id=_UUID, content=_TEXT),
     _tool("request_review", "Send a completed Run for the Issue workflow's in_review handoff. It can assign a reviewer and start their Run.",
@@ -242,6 +248,8 @@ class NativeOperations:
                     "status": _text(row, "status"), "system_key": system_key,
                     "runtime_id": _uuid(runtime) if runtime else None}
         limit, offset = args.get("limit", 50), args.get("offset", 0)
+        if action == "list_issues":
+            return self._list_issues(workspace_id, args["project_id"], limit, offset, args.get("status"))
         query = urlencode({"limit": limit, "offset": offset})
         page = _object(self._get(f"/api/projects?{query}", workspace_id))
         projects = []
@@ -253,13 +261,53 @@ class NativeOperations:
             projects.append({"project_id": _uuid(row.get("id")), "title": _text(row, "title"),
                              "status": _text(row, "status"), "lead_type": lead_type,
                              "lead_id": _uuid(lead_id) if lead_id is not None else None})
-        total, more = page.get("total"), page.get("has_more")
-        if (type(total) is not int or total < 0 or type(more) is not bool or len(projects) > limit
-                or len({row["project_id"] for row in projects}) != len(projects)
-                or len(projects) != min(limit, max(0, total - offset)) or more != (offset + len(projects) < total)):
+        total, next_offset = _page_position(page, projects, "project_id", limit, offset)
+        if page.get("has_more") is not (next_offset is not None):
             raise NativeOperationError("native_schema_drift")
-        return {"workspace_id": workspace_id, "projects": projects, "total": total,
-                "next_offset": offset + len(projects) if more else None}
+        return {"workspace_id": workspace_id, "projects": projects, "total": total, "next_offset": next_offset}
+
+    def _list_issues(self, workspace_id, project_id, limit, offset, status):
+        self._project(workspace_id, project_id)
+        query = {"project_id": project_id, "limit": limit, "offset": offset,
+                 "sort": "created_at", "direction": "desc"}
+        if status is not None:
+            catalog = _object(self._get("/api/issue-statuses", workspace_id))
+            rows = _array(catalog.get("statuses"))
+            keys = set()
+            for row in rows:
+                _scope(_object(row), workspace_id=workspace_id)
+                key = _text(row, "key")
+                if key in keys or row.get("archived_at") is not None:
+                    raise NativeOperationError("native_schema_drift")
+                keys.add(key)
+            if type(catalog.get("total")) is not int or catalog["total"] != len(rows):
+                raise NativeOperationError("native_schema_drift")
+            if status not in keys:
+                raise NativeOperationError("unknown_issue_status")
+            query["status"] = status
+
+        page = _object(self._get(f"/api/issues?{urlencode(query)}", workspace_id))
+        issues = []
+        for row in _array(page.get("issues")):
+            _scope(_object(row), workspace_id=workspace_id, project_id=project_id)
+            issue_status = _text(row, "status")
+            if status is not None and issue_status != status:
+                raise NativeOperationError("issue_status_filter_mismatch")
+            actor_type, actor_id = row.get("assignee_type"), row.get("assignee_id")
+            if (actor_type not in (None, "agent", "member", "squad")
+                    or (actor_type is None) != (actor_id is None)
+                    or not {"assignee_type", "assignee_id", "due_date"} <= row.keys()):
+                raise NativeOperationError("native_schema_drift")
+            due_date = row["due_date"]
+            if due_date is not None and not isinstance(due_date, str):
+                raise NativeOperationError("native_schema_drift")
+            issues.append({"issue_id": _uuid(row.get("id")), "identifier": _text(row, "identifier"),
+                           "title": _text(row, "title"), "status": issue_status, "priority": _text(row, "priority"),
+                           "assignee_type": actor_type, "assignee_id": _uuid(actor_id) if actor_id is not None else None,
+                           "due_date": due_date, "revision": _revision(row)})
+        total, next_offset = _page_position(page, issues, "issue_id", limit, offset)
+        return {"workspace_id": workspace_id, "project_id": project_id, "issues": issues,
+                "total": total, "next_offset": next_offset}
 
     def _run(self, workspace_id, project_id, issue_id, run_id):
         rows = _array(self._get(f"/api/issues/{issue_id}/task-runs?scope=issue&view=timeline", workspace_id))
@@ -403,15 +451,17 @@ class NativeOperations:
             client_key = str(uuid5(NAMESPACE_URL, repr(("multica-mcp-steer-v1", self._instance_id, principal, request_id))))
 
             def verify(row):
-                receipt = self._comment_receipt(row, ws, project_id, issue_id, content)
-                supplements = _array(row.get("supplements"))
-                if len(supplements) != 1 or row.get("trigger_outcomes") not in (None, []):
+                supplements = row.get("supplements")
+                if not isinstance(supplements, list) or len(supplements) != 1 or row.get("trigger_outcomes") not in (None, []):
                     raise NativeOperationError("supplement_receipt_unverified")
                 supplement = _object(supplements[0])
                 _scope(supplement, task_id=run_id, agent_id=source_agent)
+                receipt = self._comment_receipt(row, ws, project_id, issue_id, content)
                 return {**receipt, "run_id": run_id, "supplement_status": _text(supplement, "status"),
                         "delivered_at": supplement.get("delivered_at")}
 
+            # v0.11.0's dedicated handler atomically stores the comment and binding
+            # while the Run is active. The generic /comments handler has dispatch fallback.
             return "POST", f"{issue_path}/tasks/{run_id}/supplements", {
                 "content": content, "client_request_id": client_key,
             }, verify
@@ -499,6 +549,15 @@ def _check_content(value):
 def _verify_fields(row, fields):
     if any(key not in row or row[key] != value for key, value in fields.items()):
         raise NativeOperationError("native_receipt_mismatch")
+
+
+def _page_position(page, rows, id_field, limit, offset):
+    total = page.get("total")
+    if (type(total) is not int or total < 0 or len(rows) != min(limit, max(0, total - offset))
+            or len({row[id_field] for row in rows}) != len(rows)):
+        raise NativeOperationError("native_schema_drift")
+    end = offset + len(rows)
+    return total, end if end < total else None
 
 
 def _run_outcome(row):

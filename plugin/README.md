@@ -1,6 +1,6 @@
 # Multica Backend 云端 Dot 接入素材
 
-本目录用于本地审阅。目标是让云端 Dot（G8）找到已接入实例中的项目与现任协调员，核查原生记录，并在交办动作经授权、兼容验证和实际发现后沿同一请求交办和对账。Multica 的真实 HTTPS MCP 入口、OAuth、原生 App 登记和目标 Dot 联验均待取证。
+本目录提供云端 Dot（G8）连接 Multica 的装配素材。Vultr 的真实 HTTPS MCP 入口、OAuth 挑战和发现文档已于 2026-11-20 核验。云端连接管理页的注册、目标 Dot 登录以及原生调用回执分别核对。[部署回执](../deployment/multica-backend/README.md)
 
 服务侧逐屏装配、授权与读回见 [Vultr 部署指南](../deployment/multica-backend/README.md)。
 

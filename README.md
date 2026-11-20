@@ -1,11 +1,12 @@
 # multica-4-dot
 
-将 Multica 接入云端 Dot 的插件项目。Multica 保存任务与运行记录，Task Mailbox 保存跨端回执，Dot 负责协调、核对与汇报。当前仓库提供原生读取适配器、派发账本、版本跟踪和插件装配素材。云端直连入口及生产写入的交付状态见[工程任务](docs/multica-backend-tasks.md)。
+将 Multica 接入云端 Dot 的插件项目。Multica 保存任务与运行记录，Task Mailbox 保存跨端回执，Dot 负责协调、核对与汇报。Vultr 已部署独立 MCP，提供 OAuth、按实例读取、项目和 Issue 操作，以及持久派发对账。公网和原生客户端的各项验收见[工程任务](docs/multica-backend-tasks.md)。
 
 [mcp/](mcp/README.md) 存放服务端实现和契约测试，[plugin/](plugin/) 存放云端 Dot 的装配素材。上游发行跟踪与版本适配共用同一套[兼容约定](docs/decisions/005-upstream-compatibility.md)。
 
 | 文档 | 内容 |
 |---|---|
+| [Multica Backend MCP 部署、配置与升级手册](deployment/multica-backend/README.md) | 首次部署、查看现网、改后端地址、新增实例、换 PAT、MCP 换版回退，以及跟进腾讯云 Multica 升级。 |
 | [Multica Backend MCP 决策与任务](docs/backend-integration.md) | Dot 直连的五项 ADR、并行任务、版本跟踪及能力验收。 |
 | [G8 与工作区协调员职责和协作规范](skills/workspace-coordination/SKILL.md) | 适用于所有工作区的权限、找人、决策、下令和回报约定。 |
 | [工作流、通知与跨端汇报方案](docs/workflow-reporting.md) | Multica 原生编排、给公子和云端 Dot 的汇报、Mac 协调桥退役与试点判定。另见[腾讯云异常补报实测](docs/tencent-run-reporter.md)。 |

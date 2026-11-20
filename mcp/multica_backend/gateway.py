@@ -199,10 +199,6 @@ class Gateway:
             raise GatewayError("coordinator_changed")
         if command.mailbox_recipient and command.mailbox_recipient != workspace.mailbox_recipient:
             raise GatewayError("mailbox_route_changed")
-        if not workspace.correlation_property_id:
-            raise GatewayError("missing_dispatch_property")
-        if command.mailbox_job_id is not None and not workspace.mailbox_property_id:
-            raise GatewayError("missing_mailbox_property")
         current = self.ledger.get(principal, request_id)
         self._reader(instance, command.workspace_id, command.project_id).get_project()
         if current is not None and current.state == "confirmed":

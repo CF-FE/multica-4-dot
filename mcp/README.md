@@ -5,13 +5,21 @@
 | 模块 | 用途 |
 |---|---|
 | [multica_api.py](multica_backend/multica_api.py) | 绑定服务端配置的实例、调用身份与目标范围，核对原生项目、Issue 和指定 Run 的读取契约 |
-| [delivery.py](multica_backend/delivery.py) | 在 SQLite 中认领稳定请求，按原生关联判断派发结果及恢复方式 |
+| [delivery.py](multica_backend/delivery.py) · [原生派发](multica_backend/native_dispatch.py) | 在 SQLite 中认领稳定请求，以一次原生请求同事务写入关联属性，超时后回查 |
+| [服务入口](multica_backend/server.py) · [Gateway](multica_backend/gateway.py) | OAuth、Streamable HTTP 工具发现、实例目录、项目/Run 读取、稳定请求与操作结果 |
+| [业务操作](multica_backend/native_operations.py) · [信箱适配](multica_backend/mailbox.py) | 工作区及负责人、项目、Issue、静默备注、定向引导、复审、取消/重跑与原 job 结果的关联 |
 
-在仓库根目录运行以下命令。第一条验证服务端模块，第二条覆盖已有补报器、读取服务及上游发行检查。
+## 实例地址、授权与换证
+
+实例目录由服务端的 `MULTICA_MCP_CONFIG` 指向，systemd 从 Vultr 私有的 `/etc/multica-backend/config.json` 提供快照。`instances.<实例标识>.origin` 是 **Multica API 的 origin**，形如 `https://multica.example.org`，不带 `/api` 或自定义路径。工作区在所属实例的 `workspaces` 下登记。云端工具只接受 `instance_id`；将同一实例迁到另一个地址时修改 `origin`，核实专属账号与工作区在该实例的对应关系，然后重启本服务并读回。自托管 HTTP 私网只在固定内网 IP 和已核实的加密 overlay 上显式启用 `allow_private_http`。若是另一套独立实例，新增实例标识和独立凭据。云端的公网入口及 GitHub 服务回调由 `MULTICA_MCP_PUBLIC_BASE_URL` 单独配置。[配置样例](../deployment/multica-backend/config.example.json) · [OAuth 路由](AUTH.md)
+
+在 Vultr 上执行 `sudo /opt/multica-backend/enroll-pat --replace`，无回显输入新的 Multica PAT。脚本先通过当前实例的 `/api/me` 对比预期用户 UUID，再原子替换配置指向的凭据文件。默认实例为 `tencent`，默认凭据源文件为 `/etc/multica-backend/multica-pat`。原服务在运行时执行 `sudo systemctl restart multica-backend.service`，使 systemd 加载新凭据；核读后可在 Multica 撤销旧 PAT。[换证工具源码](../scripts/enroll_multica_pat.py)
+
+在仓库根目录运行以下命令。服务端测试使用已安装 `./mcp[test]` 的 Python 3.11+ 独立环境；仓库级测试覆盖补报、读取及发行检查。
 
 ```sh
 PYTHONPATH=mcp python3 -B -m unittest discover -s mcp/tests -q
 python3 -B -m unittest discover -s tests -q
 ```
 
-版本更新时可运行 [发行检查](../scripts/check_multica_release.py)，再按[只读契约检查器](../scripts/check_multica_contract.py)的 `--help` 对明确的隔离环境取证。隔离测试使用合成凭据。单独运行这两个模块只会得到组件级证据；云端 OAuth、MCP 工具发现、写操作与回程的验证位置见交付表。
+版本更新时可运行[发行检查](../scripts/check_multica_release.py)，再按[只读契约检查器](../scripts/check_multica_contract.py)和[候选版演练](../docs/multica-backend-candidate.md)取证。启动、打包和恢复步骤见[部署手册](../deployment/multica-backend/README.md)。真实云端 OAuth、写入和原件签收须分别核对原生回执。

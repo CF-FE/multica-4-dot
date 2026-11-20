@@ -207,28 +207,32 @@ class MulticaDispatch:
             return ref
 
         self._check_correlation(correlation)
-        correlation_id = self._property_id()
-        self._validate_text_property(command, correlation_id, writable=False)
-        exact = self._search_exact(command, correlation_id, correlation, expected_creator=True)
-        if exact is not None:
-            reference, detail = exact
-            self._verify_mailbox_reference(command, detail)
-            return reference
+        if self._correlation_property_id is not None:
+            exact = self._search_exact(command, self._correlation_property_id, correlation, expected_creator=True)
+            if exact is not None:
+                reference, detail = exact
+                self._validate_text_property(command, self._correlation_property_id, writable=False)
+                self._verify_mailbox_reference(command, detail)
+                return reference
         if command.mailbox_job_id is not None:
             self._check_no_other_mailbox_issue(command)
+        self._property_id()
         return None
 
     def _check_no_other_mailbox_issue(self, command: DispatchCommand) -> None:
-        for key, value in self._mailbox_marker(command, writable=True).items():
-            self._validate_text_property(command, key, writable=False)
-            if self._search_exact(command, key, value) is not None:
-                raise NativeHTTPError("issue_lookup", "mailbox_issue_already_exists")
+        mailbox = self._mailbox_marker(command)
+        # Historical jobs used the metadata bag. Check it before any property
+        # provisioning requirement, including in workspaces with zero definitions.
+        if self._search_exact(command, _LEGACY_MAILBOX_METADATA, command.mailbox_job_id, bag="metadata") is not None:
+            raise NativeHTTPError("issue_lookup", "legacy_mailbox_issue_exists")
         if self._legacy_mailbox_property_id:
             self._validate_text_property(command, self._legacy_mailbox_property_id, writable=False)
             if self._search_exact(command, self._legacy_mailbox_property_id, command.mailbox_job_id) is not None:
                 raise NativeHTTPError("issue_lookup", "legacy_mailbox_issue_exists")
-        if self._search_exact(command, _LEGACY_MAILBOX_METADATA, command.mailbox_job_id, bag="metadata") is not None:
-            raise NativeHTTPError("issue_lookup", "legacy_mailbox_issue_exists")
+        for key, value in mailbox.items():
+            self._validate_text_property(command, key, writable=False)
+            if self._search_exact(command, key, value) is not None:
+                raise NativeHTTPError("issue_lookup", "mailbox_issue_already_exists")
 
     def _property_id(self) -> str:
         if self._correlation_property_id is None:

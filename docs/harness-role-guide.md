@@ -32,7 +32,7 @@ Decision Service 部署在外网 Vultr VPS，由 `decision-service.service` 监�
 | 结构化重构、交互调试 · `software_implementation` | **win-work OMP** 是工具匹配的候选。AST、LSP 和 DAP 可提供结构匹配、引用及断点证据。 | 确认目标语言服务和调试器可用。该岗位目前有固定版本架构依据，项目历史案例覆盖的是宿主运维。 |
 | Windows 运维工程师 · `workspace_runtime` | **win-work OMP**。可使用本机 PowerShell、Windows 管理工具和 MCP 服务，已验证提升后的进程身份和工具结果。 | 普通工作区维护可复用 DSH。修改系统文件、安装服务或使用凭据时，按任务给出目标、授权范围、恢复方法及验收证据。 |
 | Multica 系统管理员 | **win-work OMP + `multica-backend`**。适合查实例、核对 Run、使用任务内 CLI 回报。 | 涉及 workspace owner 能力时，分别核验操作者与普通 Run 的身份、调用范围和一项可恢复操作。技能、宿主管理员、平台令牌各有独立作用。 |
-| 项目知识维护 · `workspace_knowledge` | 需要跨会话跟踪时，**win-work Hermes** 已有原生项目记忆的 CLI 实测。要求立即由已验证的 Multica 链路交付时，可用 **win-work OMP 或 DSH**。 | 选 Hermes 新建角色后，先从 Multica 派一次带已知来源的问题，并验收答案和引用。三者的项目绑定与跨库只读配置可直接复用。[记忆接入与验收](win-work-hindsight.md) |
+| 项目知识维护 · `workspace_knowledge` | **win-work Hermes** 已用真实 Multica ACP 任务验证首轮项目记忆和获准的跨库读取。OMP 和 DSH 也有各自的派发与读取回执。 | 需要在宿主中断后无人值守续跑的岗位，仍须单独验证恢复。引用具体历史结论时按原文档核查。[五端安装与验收报告](hindsight-installation-report-2026-11-20.md) |
 
 有可复用角色时，先看它能否交付样本、是否接触过待审产物、权限是否覆盖任务。统一使用一种运行时可减少插件和升级维护，但 Windows 服务、独立审查与特定工具各有自己的验收条件。只有任务确实受数据位置、权限边界、工具或独立性约束时，才值得增加一个组合。以下判断有对应案例，速度、成本和模型质量尚无同题对照数据。
 
@@ -48,7 +48,7 @@ Decision Service 部署在外网 Vultr VPS，由 `decision-service.service` 监�
 | win-work | Kimi 2.6.3 | `kimi acp` | Multica 研究附件、代码修改及独立测试，CLOU-6、CLOU-7 |
 | win-work | OMP 18.22.2 | `omp (json mode)` | Multica 运维、平台技能和项目记忆，CLOU-5、CLOU-9、CLOU-10 |
 | win-work | DSH 0.2.2-rc.3 | `dsh --profile multica`，stdio | Multica 文件、搜索、Bash、返工及记忆，CLOU-1 至 CLOU-3、CLOU-8 |
-| win-work | Hermes 0.19.0 | `hermes acp` | Multica 运行时在线，本机新 CLI 会话已验自动召回及跨库读取，平台派发待验 |
+| win-work | Hermes 0.19.0（11-18 登记），0.23.2（11-20 实测） | `hermes acp` | CLOU-16 的真实 ACP 新会话已验证首轮注入和跨库只读；故障后自动续跑待验。 |
 
 mac-work 有经过返工复审验证的审查链路。win-work 上的工具、插件和模型配置更齐全，运维及执行角色同时依赖该机 daemon 的 Windows 身份和服务会话环境。在一端验证过的版本、沙箱或凭据迁移到另一端后，需要以另一端的新会话复核。宿主还查到 mac-work 的 Herdr 会话管理器、两端的 Zed 编辑器和 win-work 的 ZCode 3.16.3 桌面应用。ZCode 目前只确认了安装，仍缺可供 Multica 选择的运行时与任务回执。
 
@@ -96,7 +96,7 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 
 **结构。** CLI、ACP 及可选的常驻 Gateway 共用 Python 的 `AIAgent`。核心循环在预算内调用模型、经工具注册表选择处理器，把结果送回下一轮。Gateway 另管入口、会话路由和结果投递。运行时把原始会话与消息放在本机 SQLite，内置 Memory 保存短事实，Skills 按需加载操作方法，外部 Hindsight 提供项目经验。对跨日交接而言，这意味着原始会话可查证、已有经验可召回、操作方法可单独维护。[0.19 对应发布线的官方架构](https://github.com/NousResearch/hermes-agent/blob/3ef6bbd201263d354fd83ec55b3c306ded2eb72a/website/docs/developer-guide/architecture.md) · [工具注册与筛选](https://github.com/NousResearch/hermes-agent/blob/3ef6bbd201263d354fd83ec55b3c306ded2eb72a/tools/registry.py#L530-L565)
 
-**选型取舍。** Hermes 适合跨会话故障分诊、交接和知识维护。win-work CLI 新会话首轮自动注入 15 条记忆、零工具调用答对既有案例，两库按 ID 读回及召回也已实测。首次探测虽已注入，模型仍误报未召回，所以验收要看实际送给模型的上下文和引用。代价是同时涉及本机历史、profile、外部 bank 及工具后端。关闭 Hindsight 整段会话自动留存后，Hermes 仍有本机会话历史。当前终端后端为 local，系统权限来自宿主账户。已有 Multica 调度的角色可先走现有 ACP 入口，真实派发尚待验收。Gateway 常驻、故障恢复和后台形成 Skills 各需专门验证。[各端接入与原始回执定位](win-work-hindsight.md#验收) · [原生后台复盘的工具范围](https://github.com/NousResearch/hermes-agent/blob/3ef6bbd201263d354fd83ec55b3c306ded2eb72a/agent/background_review.py#L809-L833)
+**选型取舍。** Hermes 适合跨会话故障分诊、交接和知识维护。11-18 的 win-work CLI 新会话首轮注入 15 条记忆。11-20 的 CLOU-16 进一步验证了 Multica 派发：Hermes 0.23.2 的新 ACP 会话在首个业务工具前收到 21 条项目记忆，并按 ID 读回本库和获准外库的文档，显式召回各 7 条。自动注入可能遗漏具体结论，需以实际模型上下文和原件核对。运维涉及本机会话历史、profile、外部 bank 及工具后端，local 终端权限来自宿主账户。Gateway 常驻、故障后自动恢复和后台形成 Skills 各需专门验证。[ACP 验收原卡](http://10.207.56.3:3000/cloud-work/issues/CLOU-16) · [各端接入报告](hindsight-installation-report-2026-11-20.md) · [原生后台复盘的工具范围](https://github.com/NousResearch/hermes-agent/blob/3ef6bbd201263d354fd83ec55b3c306ded2eb72a/agent/background_review.py#L809-L833)
 
 **周期任务与经验复用。** 固定发布线中的后台复盘要累积到配置阈值、能使用技能管理工具，并取得完整且未被中断的回复，才有机会创建或修订 Skill。可重复的巡检、历史分诊、个人稳定偏好、跨渠道交接各有收益。临时故障只有经过再次复现才适宜固化成步骤。Gateway 投递账本可重投已完成的回复，必要时以业务 ID 去重。创建 Skill、下次加速、任务完成、消息送达需要各自的证据。[发布线复盘实现](https://github.com/NousResearch/hermes-agent/blob/3ef6bbd201263d354fd83ec55b3c306ded2eb72a/agent/turn_finalizer.py) · [官方 Cron](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron) · [结果投递账本](https://github.com/NousResearch/hermes-agent/blob/3ef6bbd201263d354fd83ec55b3c306ded2eb72a/gateway/delivery_ledger.py)
 
