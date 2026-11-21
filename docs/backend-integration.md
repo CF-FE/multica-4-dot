@@ -2,6 +2,8 @@
 
 云端 Dot 直接操作 Multica 的完整方案由以下五项决策共同定义。各项状态见正文。跨仓的信箱、岗位和基础设施约定仍由原记录维护。[任务、依赖与复核](multica-backend-tasks.md)
 
+2026-11-21 起，项目进度、复审和验收统一查所属 Multica 项目看板与原 Issue。ADR-004 与 v0.2 提案中涉及 GitHub Projects 的段落保留为历史设计。现行操作见[工作区协调规范](../skills/workspace-coordination/SKILL.md#谁负责什么)。
+
 | 决策 | 回答的问题 |
 |---|---|
 | [ADR-001　Dot 直连与组件分工](decisions/001-dot-multica-gateway.md) | 为什么建独立 MCP，哪个系统持有项目、指令、Run 和结果 |

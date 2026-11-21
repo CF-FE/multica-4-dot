@@ -2,7 +2,7 @@
 
 状态：提案，未部署、未进行线上验证。本文是可公开版本；机器身份、地址、凭据及项目原始数据另行受控管理。
 
-后端访问方式及 Decision MCP / GitHub Projects 边界见 [v0.2 接入决策](backend-integration.md)。
+当前项目进度与验收入口见[工作区协调规范](../skills/workspace-coordination/SKILL.md#谁负责什么)。历次后端接入方案见[设计记录](backend-integration.md)。
 
 2026-11-20 更新。工作流转向 Multica、Mac 协调桥退役范围和跨端汇报的候选设计见[工作流、通知与跨端汇报方案](workflow-reporting.md)。下文保留 v0.1 的提案背景。
 

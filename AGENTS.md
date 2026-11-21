@@ -1,6 +1,6 @@
 # Multica Project Rules
 
-创建 Multica 任务时遵循后端 Skill 的[任务项目归属规范](skills/multica-backend/SKILL.md#任务项目归属)。
+项目进度、负责人、复审和验收结论统一以所属 Multica 项目看板和原 Issue 为准。创建 Multica 任务时遵循后端 Skill 的[任务项目归属规范](skills/multica-backend/SKILL.md#任务项目归属)。
 
 G8 跨项目协调、向任一工作区协调员交办、使用 Decision MCP 和回报时遵循[职责与协作规范](skills/workspace-coordination/SKILL.md)。新工作区按现任协调员登记接入。
 
