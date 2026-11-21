@@ -2,7 +2,7 @@
 name: workspace-coordination
 description: G8 向 Multica 工作区协调员交办、各岗位按需决策、项目交付与回报时使用。适用于现有和新增工作区及角色。
 metadata:
-  version: "1.6.0"
+  version: "1.6.1"
 ---
 
 # G8 与工作区协调员职责和协作规范

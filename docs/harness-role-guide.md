@@ -2,7 +2,7 @@
 
 在 Multica 新建或调整智能体时，用本文选主机、运行时、工具和验收任务。新角色职责由所属 Multica 项目的交付目标、运行权限和验收人确定，宿主能力以目标机器上的实测为准。herdr-4-codexcloud 已于 2026-11-21 退役；既有角色的固定版本引用仅用于追溯来源。本文是本仓库的选型主文档，后续直接更新同一文件。当前范围为 `cloud-work` 的 mac-work 和 win-work，按项目约定暂不纳入 Claude。选型基线为 2026-11-18 的 Multica v0.10.0。工作区协调员条目于 2026-11-20 按 v0.11.0 实例核对，本文时间均为北京时间。[历史角色库索引（1.0.3）](https://github.com/CF-FE/herdr-4-codexcloud/blob/742ab342355b32b70e2bac5ab8cc64290d56e23b/docs/worker-library/roles/index.json)
 
-**快速索引**　[找 Mike](#工作区协调员-mike) · [按岗位选](#从角色要交付的结果开始) · [两端版本与实测](#两端实际登记的运行时) · [按架构问题查](#架构比较) · [速度与 Token](#速度与-token) · [实际推理档位](#实际推理档位) · [推荐分工](#推荐分工与换选条件) · [创建与验收](#建一个可以验收的角色) · [DSH 与 Hermes 独立决策身份](#win-work-的-dsh-与-hermes-独立决策身份) · [按来源查](#资料索引) · [新增或升级](#新增升级或停用时怎样更新本文)
+**快速索引**　[找 Mike](#工作区协调员-mike) · [按岗位选](#从角色要交付的结果开始) · [两端版本与实测](#两端实际登记的运行时) · [按架构问题查](#架构比较) · [速度与 Token](#速度与-token) · [实际推理档位](#实际推理档位) · [推荐分工](#推荐分工与换选条件) · [创建与验收](#建一个可以验收的角色) · [Kimi 与 OMP 独立决策身份](#win-work-的-kimi-与-omp-独立决策身份) · [DSH 与 Hermes 独立决策身份](#win-work-的-dsh-与-hermes-独立决策身份) · [按来源查](#资料索引) · [新增或升级](#新增升级或停用时怎样更新本文)
 
 **按 Harness 查**　[Codex](#codex) · [Kimi](#kimi) · [OMP / Oh My Pi](#omp) · [DSH / DeepSeek Harness](#dsh) · [Hermes](#hermes)
 
@@ -62,8 +62,8 @@ Decision Service 部署在外网 Vultr VPS，由 `decision-service.service` 监�
 | mac-work | Codex 0.169.0-alpha.11.1 | `codex app-server` | Multica 独立审查和返工复审，CLOU-1 至 CLOU-3 |
 | mac-work | Kimi 2.6.3 | `kimi acp` | 运行时在线，本项目角色任务待验 |
 | win-work | Codex 0.162.1 | `codex app-server` | 运行时在线，本项目角色任务及 Windows 沙箱待验 |
-| win-work | Kimi 2.6.3 | `kimi acp` | Multica 研究附件、代码修改及独立测试，CLOU-6、CLOU-7 |
-| win-work | OMP 18.22.2 | `omp (json mode)` | Multica 运维、平台技能和项目记忆，CLOU-5、CLOU-9、CLOU-10 |
+| win-work | Kimi 2.6.3（11-18），2.7.2（11-21） | `kimi acp` | Multica 研究附件、代码修改及独立测试，CLOU-6、CLOU-7 |
+| win-work | OMP 18.22.2（11-18），19.0.1（11-21） | `omp (json mode)` | Multica 运维、平台技能和项目记忆，CLOU-5、CLOU-9、CLOU-10 |
 | win-work | DSH 0.2.2-rc.3 | `dsh --profile multica`，stdio | Multica 文件、搜索、Bash、返工及记忆，CLOU-1 至 CLOU-3、CLOU-8；独立项目决策见 CLOU-44、45。 |
 | win-work | Hermes 0.19.0（11-18 登记），0.23.2（11-20 实测），0.23.3（CLOU-43） | `hermes acp` | CLOU-16 的真实 ACP 新会话已验证首轮注入和跨库只读；故障后自动续跑待验。 |
 
@@ -163,15 +163,13 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 
 ## 建一个可以验收的角色
 
-项目决策使用已获准的 Agent 服务身份和对应 MCP。若需复用 win-work 的 GitHub OAuth，可按下表核对同一 harness 的共享入口。先从服务端核实该共享身份在真实项目 UUID 下允许的操作，再安排业务调用。历史接入样本验证的是指定身份和会话的只读查询。2026-11-21 服务端核对时，共享 OAuth 仅有 `decision-service-smoke`；当前两个 Multica 项目的决策访问走[按角色授权的独立入口](#win-work-的-dsh-与-hermes-独立决策身份)。
+项目决策使用已获准的 Agent 服务身份和对应 MCP。若需复用 win-work 的 GitHub OAuth，可按下表核对同一 harness 的共享入口。先从服务端核实该共享身份在真实项目 UUID 下允许的操作，再安排业务调用。历史接入样本验证的是指定身份和会话的只读查询。2026-11-21 服务端核对时，共享 OAuth 仅有 `decision-service-smoke`；当前两个 Multica 项目的决策访问使用角色专属身份。按运行时查看 [Kimi 与 OMP](#win-work-的-kimi-与-omp-独立决策身份) 或 [DSH 与 Hermes](#win-work-的-dsh-与-hermes-独立决策身份)。
 
 | win-work 运行时 | 共享 OAuth 条目 | 已验证的只读查询 |
 |---|---|---|
 | Kimi | `decision-service` | Kimi 2.7.2 首次加载可能晚于模型工具清单的生成。确认运行时已发现工具后，恢复原会话并实际查询。[CLOU-31](http://10.207.56.3:3000/cloud-work/issues/CLOU-31) |
 | DSH | `decision-service-dsh` | 此前未挂载决策 MCP 的验证角色，在首次查询时复用了现有登录。[接入说明](../deployment/decision-access/dsh/README.md) · [CLOU-35](http://10.207.56.3:3000/cloud-work/issues/CLOU-35) |
 | Hermes | `decision-service-hermes` | 知识管理员和新建角色各自完成新会话只读查询。[接入说明](../deployment/decision-access/hermes/README.md) · [CLOU-37](http://10.207.56.3:3000/cloud-work/issues/CLOU-37) |
-
-win-work Kimi 使用独立服务身份时，若工作区 HTTP 条目握手返回 401，先核角色与服务端的项目授权，再核运行时如何传递认证头。软件实现工程师在本角色用同名 stdio 配置调用宿主已有适配器，由子进程继承本角色的凭据；角色 MCP 配置只保存命令和参数。另核实际模型工具表：本机发现三个工具、首轮模型仍不可见时，先读原请求和原卡，确认尚未执行业务，待当前 Run 结束后，用普通 rerun 恢复原会话，沿同一请求继续。[固定步骤验收 CLOU-41](http://10.207.56.3:3000/cloud-work/issues/01a1fbec-00cc-7383-9df7-e49a4cac8a27) · [缓存策略取舍 CLOU-42](http://10.207.56.3:3000/cloud-work/issues/01a1fbec-0372-72d0-84b8-b62bf7ebf92d)
 
 1. **选职责与样本。** 先核对 Multica 工作区已有岗位，再依项目原任务定义角色职责、输入、允许的动作、交付物、回报位置和验收人。例如，软件实现工程师在指定仓库修正一个边界条件，交付差异和可重复的断言，由独立审查员在原卡复核。[Multica 岗位与交办规范](../skills/workspace-coordination/SKILL.md#谁负责什么)
 2. **选主机并核对权限。** 查当前 workspace、主机、provider、版本、已有角色及绑定。默认启用工具，使用工作区写入权限，按任务需要申请提权。分别确认调用者、可用工具、宿主可写路径以及凭据代表的身份，并记录提权由运行时自动应答还是由操作者确认。有硬隔离要求而该组合只有指令约束时，换用经验证的组合或先在隔离账户复验。
@@ -192,6 +190,24 @@ win-work Kimi 使用独立服务身份时，若工作区 HTTP 条目握手返回
 6. **留下可追溯的结论。** 记录日期、主机、版本、Issue/Run、可复核产物及待验项。工具可用、Run 结束、角色能力通过、业务结果获负责人接受分开记录。角色调用范围用 `private` 或 `public_to` 表达。已有管理员允许整个工作区调用，是该角色经确认的例外。
 
 win-work 的 Kimi 2.7.2 会话可在任务目录 `.kimi/skills/<名称>/SKILL.md` 读取 Multica 挂载的岗位 Skill。研究员和工程师都从这里读到了各自的三项正文；这些名称未列入它们的原生 `Skill` 菜单。共享记忆位于 `~/.kimi-code/skills/hindsight-memory`。配置新角色时可分别验收任务挂载和宿主入口。[研究员回执](http://10.207.56.3:3000/cloud-work/issues/CLOU-30) · [工程师回执](http://10.207.56.3:3000/cloud-work/issues/CLOU-29)
+
+## win-work 的 Kimi 与 OMP 独立决策身份
+
+研究分析师（Kimi 2.7.2）、运维工程师和 Multica 系统管理员（OMP 19.0.1）的工作区均启用 `decision-service-agent`，三个角色各有一个服务端 `multica-agent-<Agent UUID>`。2026-11-21 核实三者的项目清单均含「Multica 运行时验证」与 `fanren-work`，独立决策身份的检索 bank 数为 0。以下实单只在验证项目执行，使用 `recall=skip`。平台账号和原生 MCP 的调用身份分别核对。[角色与项目授权](workflow-reporting.md#决策服务的项目与-agent-授权)
+
+**OMP。** 两个岗位都在首个新会话直接使用已启用的工作区 HTTP 条目。OMP 的工具轨迹可能显示为 `read`、`write` 或 `eval`。先通过 `xd://` 查决策工具及 schema，再由动态工具调用 `get_decision`、`evaluate_decision` 和 `record_decision_feedback`。验收时核目标工具、实际请求号和服务端 caller。两个角色均沿用原运行时配置。
+
+**Kimi。** 软件实现工程师曾在角色的独立 HTTP 入口实际收到 401。研究分析师与其使用同一 win-work 运行时，验收前将研究员的同名角色配置切到已验证的 stdio 适配器，仅保存 `command`、`args`，由子进程读取研究员自己的 Run 环境。新会话要同时看 MCP 的工具发现记录、模型工具表和原生返回。首轮工具缺席时，在原卡记录请求号和未执行项。查明既有决定和会话状态后，再从干净上下文续验。[固定步骤 CLOU-41](http://10.207.56.3:3000/cloud-work/issues/01a1fbec-00cc-7383-9df7-e49a4cac8a27) · [Kimi HTTP 修复与恢复 CLOU-42](http://10.207.56.3:3000/cloud-work/issues/01a1fbec-0372-72d0-84b8-b62bf7ebf92d)
+
+研究员的反馈参数出现两类实测错误。修订号多次以负整数发出，证据引用数组被填成字符串。该角色的 stdio 适配器仅为 `record_decision_feedback` 提供一个 `event_json` 字符串参数。参数中写完整的 v1 事件，保留整数修订号和数组。适配器解析、检查修订号范围并以原字段转发，决定、身份和事件 ID 均沿原记录。参数格式变更后要开新 Kimi 会话，核对模型实际使用的 schema。验收只给决策工具时，可把完整合成输入随触发评论传入，由发起端读取 Run 的最终正文。[研究员适配器](../deployment/decision-access/kimi/decision_agent_stdio.py) · [转换与转发测试](../deployment/decision-access/kimi/test_decision_agent_stdio.py)
+
+| 岗位与原卡 | 合成任务中的实测 | 接入或反馈的维护要点 |
+|---|---|---|
+| [Multica 系统管理员 · CLOU-46](http://10.207.56.3:3000/cloud-work/issues/01a1fc35-d479-71b3-ae06-0dc09362a804) | 采用 `drift-first`，核出 scheduler 期望 7、实测 6，inbox 为 4/4，audit 缺测并保留 `unknown`。 | 两次状态观察时间相同，首次统计为未知。沿原事件补一次有验收时间的结果修订 `rev2`，结果覆盖 1/1。业务执行与模型评估各一次。 |
+| [运维工程师 · CLOU-47](http://10.207.56.3:3000/cloud-work/issues/01a1fc35-f72a-738a-8b5d-ba187965bd4f) | 采用 `queue-first`。先查得 reader-a 队列深度 88 超过阈值 60，再查得 reader-b 错误率 6.4% 超过阈值 5%。 | 采用与结果各有一条有效回执。结果主体漏了 `unit_id`，历史覆盖汇总为已收 0/应收 1。原件与附件已独立核对，原卡保留这一差异。 |
+| [研究分析师 · CLOU-48](http://10.207.56.3:3000/cloud-work/issues/01a1fc36-1ef1-7d6d-aae3-d704032f796d) | 采用 `conflict-triage-first`，先列三个窗口，再核对正式修订 10:30 替代 09:00，保留转述的 09:30 和负责人归属待核。 | 冷启动首轮缺决策工具。在临时只开放三个决策工具的 Kimi 会话中，恢复会话并随评论传入样本后完成取证。反馈适配修复后，原决定的采用和结果各收一条，覆盖 1/1。验收结束后恢复日常工具配置，保留角色 stdio 入口。 |
+
+两个 OMP 角色的提示词和协作 Skill 的反馈参考现已明确，首次回填固定主体单元、覆盖观察与原执行引用。读回时同时核有效事件明细和单元覆盖。已有回执且身份字段不可修订时，沿原卡说明差异，避免重复提交业务。[反馈字段与覆盖读回](../skills/workspace-coordination/references/decision-feedback.md)
 
 ## win-work 的 DSH 与 Hermes 独立决策身份
 
@@ -289,3 +305,4 @@ multica runtime profile update 5e3fe5af-f04c-4238-be35-a2e1f8cd0aae --command-na
 | 2026-11-20 | 独立审查迁至 win-work DSH。CLOU-19 首次业务工具调用约 18 秒，8 分 29 秒回写独立审查报告，5 项通过。原 mac-work 四次超时和 Windows Codex 沙箱失败均保留在历史 Run。 |
 | 2026-11-21 | 将按需决策纳入现有和新增角色的 prompt 配置与新会话验收，补入服务端项目授权读回。 |
 | 2026-11-21 | 据 CLOU-43～45 补录 DSH、Hermes 独立决策身份的配置、升级复验、回退与岗位验收。 |
+| 2026-11-21 | 补入 CLOU-46～48 的 Kimi、OMP 角色独立身份实测、研究员 stdio 修复与两种反馈覆盖问题。 |
