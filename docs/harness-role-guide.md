@@ -193,6 +193,8 @@ win-work 的 Kimi 2.7.2 会话可在任务目录 `.kimi/skills/<名称>/SKILL.md
 
 ## win-work 的 Kimi 与 OMP 独立决策身份
 
+**决策 MCP 优先级：低（研究分析师、运维工程师、Multica 系统管理员）。** 三个岗位优先交付本职任务。已有依据和明确步骤时直接执行；职责内有多个可行方案，且选择会明显影响交付或风险时，才按需调用。涉及项目方向或跨团队资源取舍时，沿原卡把证据和建议交给项目负责人或工作区协调员。后续适配和专项复验优先保障负责人、协调员；这三个岗位遇到实际任务受阻时再跟进。
+
 研究分析师（Kimi 2.7.2）、运维工程师和 Multica 系统管理员（OMP 19.0.1）的工作区均启用 `decision-service-agent`，三个角色各有一个服务端 `multica-agent-<Agent UUID>`。2026-11-21 核实三者的项目清单均含「Multica 运行时验证」与 `fanren-work`，独立决策身份的检索 bank 数为 0。以下实单只在验证项目执行，使用 `recall=skip`。平台账号和原生 MCP 的调用身份分别核对。[角色与项目授权](workflow-reporting.md#决策服务的项目与-agent-授权)
 
 **OMP。** 两个岗位都在首个新会话直接使用已启用的工作区 HTTP 条目。OMP 的工具轨迹可能显示为 `read`、`write` 或 `eval`。先通过 `xd://` 查决策工具及 schema，再由动态工具调用 `get_decision`、`evaluate_decision` 和 `record_decision_feedback`。验收时核目标工具、实际请求号和服务端 caller。两个角色均沿用原运行时配置。
