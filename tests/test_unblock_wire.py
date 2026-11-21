@@ -86,7 +86,6 @@ class WireRecoveryTest(unittest.TestCase):
                 origin = f"http://127.0.0.1:{server.server_port}"
                 binary = work / "multica-profile-fixture"
                 binary.write_text("#!/bin/sh\ncase \"$3\" in\n"
-                                  "  --version) echo 'multica 0.11.0 (commit: cb190810a, built: fixture)' ;;\n"
                                   f"  config) printf 'Profile: fixture\\nserver_url: {origin}\\n' ;;\n"
                                   "  *) exit 2 ;;\nesac\n")
                 binary.chmod(0o700)

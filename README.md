@@ -10,6 +10,7 @@
 | [Multica Backend MCP 决策与任务](docs/backend-integration.md) | Dot 直连的五项 ADR、并行任务、版本跟踪及能力验收。 |
 | [G8 与工作区协调员职责和协作规范](skills/workspace-coordination/SKILL.md) | 适用于所有工作区的权限、找人、决策、下令和回报约定。 |
 | [项目解阻闭环](docs/project-unblock-loop.md) · [操作手册](docs/unblock-operations.md) · [ADR-006](docs/decisions/006-project-unblock-loop.md) | 原卡摘要、具名追证、单次核收、恢复与范围验收。 |
+| [unblock 版本兼容规范](AGENTS.md#unblock-版本兼容) | **跟随宿主 CLI，按能力复验。** |
 | [工作流、通知与跨端汇报方案](docs/workflow-reporting.md) | Multica 原生编排、给公子和云端 Dot 的汇报、Mac 协调桥退役与试点判定。另见[腾讯云异常补报实测](docs/tencent-run-reporter.md)。 |
 | [角色创建与 Harness 选型指南](docs/harness-role-guide.md) | 找人可直达[工作区协调员 Mike](docs/harness-role-guide.md#工作区协调员-mike)。按岗位和主机选型可查[架构比较](docs/harness-role-guide.md#架构比较)、[速度与 Token](docs/harness-role-guide.md#速度与-token)及[资料索引](docs/harness-role-guide.md#资料索引)。 |
 | [架构与决策](docs/architecture.md) | 组件分工、部署拓扑、备选方案、网络和凭据边界 |

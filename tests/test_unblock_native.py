@@ -96,11 +96,8 @@ class TestNativeSource(unittest.TestCase):
         self.assertNotIn("MULTICA_UNBLOCK_ACCESS_TOKEN", kwargs["env"])
         self.assertNotIn("MULTICA_SERVER_URL", kwargs["env"])
         self.assertNotIn("HTTPS_PROXY", kwargs["env"])
-        if argv[3:] == ["--version"]:
-            stdout = "multica 0.11.0 (commit: cb190810a, built: fixture)\n"
-        else:
-            self.assertEqual(argv[3:], ["config", "show"])
-            stdout = self.config
+        self.assertEqual(argv[3:], ["config", "show"])
+        stdout = self.config
         return CompletedProcess(argv, 0, stdout, "")
 
     def connection(self, host, port, **kwargs):

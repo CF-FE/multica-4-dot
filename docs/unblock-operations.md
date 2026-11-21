@@ -1,5 +1,7 @@
 # 登记一个项目并核收解阻事项
 
+**升级按[版本兼容规范](../AGENTS.md#unblock-版本兼容)办理。** 依次核对具名 profile、API origin、原卡范围、只读预览、一次真实提醒和同键重放；记录实测版本及具体缺项。
+
 从仓库根目录运行 `python3 -m unblock`，Python 3.11 及以上。以下命令中的 `cases.json`、`snapshot.json` 和 SQLite 均为操作者私有文件；案例使用占位标识。本地方案、隔离回执和真实业务验收分别登记。[设计](project-unblock-loop.md) · [ADR-006](decisions/006-project-unblock-loop.md)
 
 ## 准备与发布摘要

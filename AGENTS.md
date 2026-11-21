@@ -4,6 +4,10 @@
 
 G8 跨项目协调、向任一工作区协调员交办、使用 Decision MCP 和回报时遵循[职责与协作规范](skills/workspace-coordination/SKILL.md)。新工作区按现任协调员登记接入。
 
+## unblock 版本兼容
+
+**unblock 复用宿主当前 Multica CLI，以所需能力和实际回执判定兼容。** 发布提交、实测版本仅用于追溯和回退。禁止以版本号、构建提交或版本白名单作为启动门槛，或为此另装旧版 CLI。升级时复验关键能力；发现接口变化，修复对应适配并保留缺项诊断。公子于 2026-11-21 确认。[复验步骤](docs/unblock-operations.md)
+
 ## Runtime and Agent Defaults
 
 - 公子于 2026-11-16 明确确认：后续配置 Multica 智能体及运行时，默认启用工具，执行权限限定为工作区（`workspace-write` 或运行时的等价模式）。

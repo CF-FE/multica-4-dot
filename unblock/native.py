@@ -12,14 +12,14 @@ from threading import Lock
 
 try:
     from multica_backend.mailbox import Mailbox, MailboxError
-    from multica_backend.multica_api import CONTRACT_BASELINE, CONTRACT_SOURCE_COMMIT, _parse_origin, _uuid
+    from multica_backend.multica_api import _parse_origin, _uuid
     from multica_backend.native_http import NativeHTTP, NativeHTTPError
 except ModuleNotFoundError as exc:
     if exc.name != "multica_backend":
         raise
     # Direct checkout use with the standard library and no MCP SDK installed.
     from mcp.multica_backend.mailbox import Mailbox, MailboxError
-    from mcp.multica_backend.multica_api import CONTRACT_BASELINE, CONTRACT_SOURCE_COMMIT, _parse_origin, _uuid
+    from mcp.multica_backend.multica_api import _parse_origin, _uuid
     from mcp.multica_backend.native_http import NativeHTTP, NativeHTTPError
 
 
@@ -172,8 +172,7 @@ class NativeSource:
         self._lock = Lock()
 
     def _cli(self, *args):
-        # Ignore Run, token, server-override and proxy variables. These two
-        # commands inspect the local binary and named profile without a login.
+        # Read the named profile without inheriting Run credentials or server overrides.
         env = {key: os.environ[key] for key in ("HOME", "USERPROFILE", "SYSTEMROOT", "XDG_CONFIG_HOME")
                if key in os.environ}
         try:
@@ -203,10 +202,6 @@ class NativeSource:
         return result
 
     def _bind(self):
-        version = self._cli("--version").splitlines()
-        expected = f"multica {CONTRACT_BASELINE.removeprefix('v')} (commit: {CONTRACT_SOURCE_COMMIT[:9]}, "
-        if not version or not version[0].startswith(expected):
-            raise NativeSourceError("unsupported_cli_version")
         config = self._cli("config", "show")
         profiles = re.findall(r"(?m)^Profile:\s+([^\r\n]+)$", config)
         origins = re.findall(r"(?m)^server_url:\s+([^\r\n]+)$", config)

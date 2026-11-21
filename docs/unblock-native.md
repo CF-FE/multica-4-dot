@@ -4,7 +4,7 @@
 
 | 键 | 含义 |
 | --- | --- |
-| `cli_path` | v0.11.0 CLI 的绝对路径 |
+| `cli_path` | 宿主当前 Multica CLI 的绝对路径 |
 | `cli_profile` | 专用具名 profile |
 | `origin` | 登记实例的 API origin，须与 profile 的 `server_url` 相同 |
 | `expected_user_id` | 当前 API 调用账号的 UUID，通过 `/api/me` 核对 |
@@ -14,7 +14,7 @@
 | `run_id` | 可选。冻结的原 Run 完整 UUID |
 | `mailbox` | 可选。冻结的原 job，形如 `{"job_id":"<ID>","payload_hash":"<SHA-256>","recipient":"<role>"}` |
 
-在已授权进程中通过 `MULTICA_UNBLOCK_ACCESS_TOKEN` 提供专用 PAT。适配器只调用 CLI 的 `--version` 与 `config show`，核对 v0.11.0 构建提交和 profile 保存的 server URL。API 凭据来自服务进程的专用 PAT，实际账号另经 `/api/me` 核对。后续只沿登记 origin 使用仓库的单次 REST 请求实现，并检查原生评论的截断响应头。可选信箱读取沿用 `MULTICA_BACKEND_MAILBOX_*` 和既有 Mailbox 客户端。
+在已授权进程中通过 `MULTICA_UNBLOCK_ACCESS_TOKEN` 提供操作者 PAT。适配器通过 `config show` 读回具名 profile 和 API origin，随后按实际服务端响应核对 `/api/me` 身份、项目和原卡归属、协调员及原线程。升级后复用宿主 CLI；发行号和提交号用于部署记录，兼容性取决于这些读取和唤醒回执所需的字段与语义。无法确认时返回待核原因。可选信箱读取沿用 `MULTICA_BACKEND_MAILBOX_*` 和既有 Mailbox 客户端。
 
 `poll()` 返回 `snapshot`、`hints`、`pending` 和 `summary_source`。来源对象的 `comment_id`、`author_id`、`created_at` 取自通过核验的原生评论，时间保留服务端原值。原线程中须有现任协调员发布的 `/note unblock.v1 <JSON>`。JSON 带完整登记作用域、正整数 `revision` 和 `checkpoint_id`，见[记录格式](unblock-record-format.md)。适配器按登记 UUID 读取工作区内原生协调员，核对其未归档且 `system_key=mika`。修订用新静默备注追加，同一检查点修订严格递增。摘要的 `recorded_at` 可早于原生发布时间，后续事件以原生发布时间为准。
 
