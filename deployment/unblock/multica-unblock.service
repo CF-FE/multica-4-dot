@@ -1,0 +1,22 @@
+[Unit]
+Description=Reconcile registered Multica coordinator reminders
+After=docker.service
+
+[Service]
+Type=oneshot
+User=multica-unblock
+Group=multica-unblock
+UMask=0077
+WorkingDirectory=/opt/multica-unblock/app
+Environment=HOME=/var/lib/multica-unblock
+StateDirectory=multica-unblock
+StateDirectoryMode=0700
+LoadCredential=operator-pat:/etc/multica-unblock/operator-pat
+ExecStart=/usr/bin/python3 -IB /opt/multica-unblock/run.py apply
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=

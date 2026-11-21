@@ -50,6 +50,23 @@ python3 -m unblock recover --config cases.json --issue "$ISSUE_ID" --checkpoint 
 
 原线程补件、信箱新版本和到期是同一回合的触发线索。原卡已有执行或合适的在途唤醒时显示 `deferred` 及原因，常规预检不会消耗本轮认领。结果不明先 `recover`，用原通知和实际开始的精确 Run 确认投递；协调员接手仍取其单独回证。输出中的 `source_reads_complete` 表示数据覆盖情况，`notifications_unconfirmed` 计数仍待核的发送。新的账本文件会丢失旧认领历史，须保护并备份原文件。判定可恢复时，项目负责人核对最新授权和在途，沿原卡执行；该命令集不直接执行项目工作。
 
+## 腾讯协调端与 G8 原卡交接
+
+腾讯 VPS 的 [systemd 定时器](../deployment/unblock/multica-unblock.timer) 在上一轮结束约一分钟后启动检查。它只处理私有登记中开启提醒的卡。原生 API 走回环，各协调员所属的 Daemon 领取 Multica Run。Windows 原启动脚本保留只读操作。
+
+腾讯写入口使用 `cases.json` 顶层的 `"appointment_ssh_config": "/etc/multica-unblock/appointment-ssh.conf"`。任命只在云网关办理。同一工作区的卡共用最近一次核实的任命，缓存位于原 SQLite 账本的 `unblock_appointment_cache` 表。没有启用卡或已缓存且原卡线索未变的空扫不会连接 Vultr。首次缺缓存，或原生摘要、受信交接出现较新的不同协调员时，按工作区刷新。线索本身不能指定提醒对象。
+
+真正新建提醒前实时核对工作区、协调员、网关运行代次及激活时刻。查询失败或发现换任时，本次发送暂缓；只有确定未进入原生 POST 才释放本轮空认领。网络恢复后，下次巡检使用原检查点重新核验。已发提醒沿原 marker 和原 Run 对账。新增工作区时按[只读身份说明](../deployment/unblock/appointment-ssh.md)登记可读范围。
+
+换任后由新任在原线程核收并签发摘要，原检查点和 SQLite 账本继续使用。网关没有逐工作区的任职生效时间，因此取本次网关激活时刻作为可证的最早时间；即使人员未变，网关重启前的旧摘要也需要重新核收。已经提交给 Multica 的唤醒由平台继续处理。严格交接时先停止该范围的新提醒，核清旧任仍在途的规则和 Run，再使新任命生效。客户端的最后一次查询与平台收件跨越两个服务。
+
+1. 对获准接收巡查交接的卡，在登记增加 `handoff_member_id`。从一次网关静默备注的原生作者读回成员 UUID。协调员先在固定原线程发布带检查点的摘要。网关备注作者、接收提醒的协调员、运行该协调员的宿主分别核对。
+2. G8 核到新阻塞时，用现有 Multica 网关的 `add_issue_note` 在原卡留顶层静默备注。请求沿原实例、工作区、项目、Issue 和固定 `request_id` 办理。`content` 为 `unblock.handoff.v1 ` 加 JSON，包含 `instance_id`、`workspace_id`、`project_id`、`issue_id`、`thread_id`、`coordinator_id`、`checkpoint_id` 和 `evidence_ref`。工具自动添加 `/note `。原执行端读回 `comment_id`；响应未知时沿同一请求对账。
+3. 腾讯端核对作者、原线程、检查点和创建时间。日志里的 `patrol_handoff:<评论 ID>` 可以追到本次提醒的输入。用原生 wakeup 的触发记录核对实际启动的 Run，再读 Mike 的原线程回证。多个客户端共用网关身份时，具体是哪一次 G8 巡查写入，还须与 G8 自身回执关联。
+4. 验证因果关系时，隔离卡的 `due_at` 设为 `null`，先观察一次自然巡检得到 `quiet`，再发静默交接。下一轮和后续重放应取得同一提醒、Run 和服务端启动时间。新增业务卡须登记实际授权、协调员及原线程。
+
+部署入口在 [deployment/unblock](../deployment/unblock/)。升级 Multica 后运行 `sudo /opt/multica-unblock/sync-cli`，再按版本兼容规范复验。停用腾讯端可执行 `sudo systemctl disable --now multica-unblock.timer`，等待当前服务退出并核查在途提醒。切回其他主机时，先停原发送端，转移并核验**最新** SQLite 账本，再启用一个发送端。
+
 ## 字节验收与回退
 
 只在实际获准的主机和路径使用下列命令。目标副本已存在即可读验；工具只产生内容证据。第一件、整批迁移和整卡的业务验收分别由指定人确认。[校验字段及系统差异](unblock-artifact.md)

@@ -6,6 +6,7 @@ import sqlite3
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import UUID
 
 
 SCOPE = ("instance_id", "workspace_id", "project_id", "issue_id", "thread_id")
@@ -18,13 +19,46 @@ def scope_key(registration):
     return json.dumps(parts, ensure_ascii=False, separators=(",", ":"))
 
 
-def registrations(path):
-    """A project shares one authority index; a case cannot override its bindings."""
-    catalog = json.loads(Path(path).read_text(encoding="utf-8"))
+def _catalog_object(pairs):
+    result = dict(pairs)
+    if len(result) != len(pairs):
+        raise ValueError("duplicate catalog field")
+    return result
+
+
+def _canonical_uuid(value):
+    try:
+        return isinstance(value, str) and str(UUID(value)) == value
+    except ValueError:
+        return False
+
+
+def registrations(path, *, require_workspace_coordinators=False, require_live_appointments=False):
+    """Resolve the workspace's coordinator before selecting individual cases."""
+    catalog = json.loads(Path(path).read_text(encoding="utf-8"), object_pairs_hook=_catalog_object)
     if not isinstance(catalog, dict) or not isinstance(catalog.get("projects"), list):
         raise ValueError("expected a projects array")
+    has_registry = "workspace_coordinators" in catalog
+    live = catalog.get("appointment_ssh_config")
+    if "appointment_ssh_config" in catalog and (not isinstance(live, str) or not Path(live).is_absolute()):
+        raise ValueError("invalid appointment SSH configuration")
+    if live and has_registry:
+        raise ValueError("ambiguous coordinator authority")
+    if require_live_appointments and not live:
+        raise ValueError("live workspace appointment source required")
+    if require_workspace_coordinators and not (has_registry or live):
+        raise ValueError("missing workspace coordinator registry")
+    workspace_coordinators = catalog.get("workspace_coordinators", {})
+    if not isinstance(workspace_coordinators, dict) or any(
+        not instance or instance.strip() != instance or not isinstance(workspaces, dict)
+        or any(not _canonical_uuid(workspace) or not _canonical_uuid(coordinator)
+               for workspace, coordinator in workspaces.items())
+        for instance, workspaces in workspace_coordinators.items()
+    ):
+        raise ValueError("invalid workspace coordinator registry")
     result = []
     seen = set()
+    current_coordinators = {}
     for project in catalog["projects"]:
         if not isinstance(project, dict):
             raise ValueError("invalid project registration")
@@ -32,12 +66,31 @@ def registrations(path):
         cases = project.get("cases")
         if not isinstance(defaults, dict) or not isinstance(cases, list):
             raise ValueError("expected project defaults and cases")
-        if not all(defaults.get(key) for key in ("instance_id", "workspace_id", "project_id", "coordinator_id")):
-            raise ValueError("missing project or coordinator binding")
+        instance, workspace, project_id = (defaults.get(key) for key in SCOPE[:3])
+        if not all(isinstance(value, str) and value and value.strip() == value
+                   for value in (instance, workspace, project_id)):
+            raise ValueError("missing project binding")
+        workspace_key = (instance, workspace.lower())
+        appointed = workspace_coordinators.get(instance, {}).get(workspace_key[1])
+        coordinator = defaults.get("coordinator_id", appointed)
+        if not live and not _canonical_uuid(coordinator):
+            raise ValueError("missing or invalid project coordinator binding")
         for case in cases:
-            if not isinstance(case, dict) or defaults.keys() & case.keys():
+            if (not isinstance(case, dict) or "coordinator_id" in case or defaults.keys() & case.keys()
+                    or {"appointment_ssh_config", "_live_appointment", "_appointment_cached",
+                        "_appointment_checked_at"} & (case.keys() | defaults.keys())):
                 raise ValueError("case overlaps project-owned fields")
             reg = {**defaults, **case}
+            if live:
+                reg["appointment_ssh_config"] = live
+                reg.pop("coordinator_id", None)
+            else:
+                reg["coordinator_id"] = coordinator
+            if not live and reg.get("notifications_enabled") is True:
+                if has_registry and appointed != coordinator:
+                    raise ValueError("current case must use the appointed workspace coordinator")
+                if current_coordinators.setdefault(workspace_key, coordinator) != coordinator:
+                    raise ValueError("conflicting current coordinator bindings in one workspace")
             identity = scope_key(reg)
             if identity in seen:
                 raise ValueError("duplicate case registration")
@@ -129,7 +182,7 @@ def parser():
     return cli
 
 
-def main(argv=None):
+def main(argv=None, *, registered=None):
     args = parser().parse_args(argv)
     if args.command == "verify-copy":
         from .artifact import verify_copy
@@ -139,33 +192,46 @@ def main(argv=None):
         print(json.dumps(proof, ensure_ascii=False))
         return 0 if proof["status"] == "match_existing" else 1
 
-    selected = [reg for reg in registrations(args.config) if not args.issue or reg["issue_id"] == args.issue]
+    catalog = registrations(args.config) if registered is None else registered
+    selected = [reg for reg in catalog if not args.issue or reg["issue_id"] == args.issue]
     if args.issue and len(selected) != 1:
         raise ValueError("expected exactly one registered case for that Issue")
     if args.command == "tick" and args.apply and not args.db:
         raise ValueError("--apply requires a persistent --db")
-    if args.command == "prepare-note":
-        from .model import assess
-
-        snapshot = json.loads(Path(args.snapshot).read_text(encoding="utf-8"))
-        assess(selected[0], snapshot, datetime.now(timezone.utc))
-        print("/note unblock.v1 " + json.dumps(snapshot, ensure_ascii=False, allow_nan=False,
-                                                separators=(",", ":")))
-        return 0
-
+    from .appointment import AppointmentScan, AppointmentUnavailable
     from .native import NativeSource, NativeSourceError
     results, incomplete = [], False
+    appointments = AppointmentScan(args.db if args.command == "tick" and args.apply else None)
     for reg in selected:
         try:
-            source = NativeSource(reg)
+            if "appointment_ssh_config" in reg and args.command != "recover":
+                reg = appointments.bind(reg)
+            if args.command == "prepare-note":
+                from .model import assess
+
+                snapshot = json.loads(Path(args.snapshot).read_text(encoding="utf-8"))
+                assess(reg, snapshot, datetime.now(timezone.utc))
+                print("/note unblock.v1 " + json.dumps(snapshot, ensure_ascii=False, allow_nan=False,
+                                                        separators=(",", ":")))
+                return 0
             if args.command == "recover":
                 from .ledger import reconcile_existing
 
+                source = NativeSource(reg, recovery_only=True)
                 receipt = reconcile_existing(args.db, scope_key(reg), args.checkpoint, source.lookup)
                 results.append({"scope": json.loads(scope_key(reg)), "notification": receipt})
             else:
-                row = run_case(reg, source, apply=args.command == "tick" and args.apply,
-                               db_path=getattr(args, "db", None))
+                apply = args.command == "tick" and args.apply
+                source = NativeSource(reg, appointment_reader=appointments.refresh)
+                try:
+                    row = run_case(reg, source, apply=apply, db_path=getattr(args, "db", None))
+                except NativeSourceError as exc:
+                    if exc.code != "coordinator_refresh_required" or not reg.get("_appointment_cached"):
+                        raise
+                    appointments.refresh(reg["appointment_ssh_config"], reg["instance_id"], reg["workspace_id"])
+                    reg = appointments.bind(reg)
+                    source = NativeSource(reg, appointment_reader=appointments.refresh)
+                    row = run_case(reg, source, apply=apply, db_path=getattr(args, "db", None))
                 if row["pending"]:
                     incomplete = True
                 assessment = row["assessment"]
@@ -175,6 +241,8 @@ def main(argv=None):
                 if args.command != "g8" or assessment["g8_pending"] or owned_by_g8 or row["pending"]:
                     results.append(row)
         except (ValueError, OSError, RuntimeError, sqlite3.Error) as exc:
+            if args.command == "prepare-note":
+                raise
             # Individual cases can have different grants. Preserve the incomplete scope and
             # a diagnostic without passing through subprocess output or private source text.
             incomplete = True
@@ -182,6 +250,8 @@ def main(argv=None):
                    "error_type": type(exc).__name__}
             if isinstance(exc, NativeSourceError):
                 row["reason"] = exc.code
+            if isinstance(exc, AppointmentUnavailable):
+                row["reason"] = "coordinator_appointment_unconfirmed"
             results.append(row)
     awaiting = sum(isinstance(r.get("notification"), dict) and r["notification"]["status"] == "unknown"
                    for r in results)

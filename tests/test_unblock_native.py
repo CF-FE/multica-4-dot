@@ -2,14 +2,19 @@
 
 from contextlib import ExitStack
 from copy import deepcopy
+from datetime import datetime
 import json
 import os
 from subprocess import CompletedProcess
+from tempfile import TemporaryDirectory
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from uuid import UUID
 
 from unblock import native
+from unblock.__main__ import scope_key
+from unblock.appointment import AppointmentScan
+from unblock.ledger import reconcile, reconcile_existing
 
 
 WS, PROJECT, ISSUE, THREAD, COORDINATOR, USER, SUPPLIER, SUMMARY, RUN, RULE, REMINDER_RUN = (
@@ -20,8 +25,10 @@ ORIGIN = "http://127.0.0.1:8086"
 MINUTE_ZERO = "2026-11-21T10:00:00Z"
 MINUTE_ONE = "2026-11-21T10:01:00Z"
 MINUTE_TWO = "2026-11-21T10:02:00Z"
+MINUTE_THREE = "2026-11-21T10:03:00Z"
 ISSUE_PATH = f"/api/issues/{ISSUE}"
 THREAD_PATH = f"{ISSUE_PATH}/comments?thread={THREAD}"
+ROOTS_PATH = f"{ISSUE_PATH}/comments?roots_only=true"
 RUNS_PATH = f"{ISSUE_PATH}/task-runs?scope=issue&view=timeline"
 RULES_PATH = f"{ISSUE_PATH}/wakeups"
 RULE_RUNS_PATH = f"{RULES_PATH}/{RULE}/runs"
@@ -64,6 +71,8 @@ class TestNativeSource(unittest.TestCase):
             **SCOPE, "expected_user_id": USER, "cli_path": "/fixture/bin/multica", "cli_profile": "fixture",
             "origin": ORIGIN, "notifications_enabled": True, "checkpoint_id": "review-copy",
             "supplement_authors": [{"type": "member", "id": SUPPLIER}],
+            "roles": {"coordinator": {"id": COORDINATOR, "appointment_ref": "fixture:appointment",
+                                      "valid_from": "2020-01-01T00:00:00Z", "valid_until": None}},
         }
         self.config = f"Profile:      fixture\nserver_url:      {ORIGIN}\n"
         self.identity = {"id": USER}
@@ -72,6 +81,7 @@ class TestNativeSource(unittest.TestCase):
                       "system_key": "mika", "archived_at": None}
         self.comments = [comment(THREAD, "original thread", parent=None, at=MINUTE_ZERO),
                          comment(SUMMARY, "/note unblock.v1 " + json.dumps(BASE_SNAPSHOT))]
+        self.root_comments = [self.comments[0]]
         self.response_headers = {}
         self.runs = []
         self.rules = []
@@ -118,14 +128,15 @@ class TestNativeSource(unittest.TestCase):
 
     def server(self, method, path, body, headers):
         self.requests.append((method, path))
+        workspace = self.registration["workspace_id"]
         self.assertEqual(headers["Authorization"], "Bearer mul_fixture_only")
-        self.assertEqual(headers.get("X-Workspace-ID"), None if path == "/api/me" else WS)
+        self.assertEqual(headers.get("X-Workspace-ID"), None if path == "/api/me" else workspace)
         if method == "POST":
             self.assertEqual(path, RULES_PATH)
             body = json.loads(body)
             self.posted.append(body)
             rule = {
-                **body, "id": RULE, "workspace_id": WS, "issue_id": ISSUE, "created_by": USER,
+                **body, "id": RULE, "workspace_id": workspace, "issue_id": ISSUE, "created_by": USER,
                 "source_task_id": None, "created_by_agent": False, "revision": 1, "enabled": True,
                 "last_task_id": None, "event_types": ["issue.status_changed"], "expiry_seconds": 60,
                 "created_at": MINUTE_ONE, "expires_at": MINUTE_TWO,
@@ -138,8 +149,10 @@ class TestNativeSource(unittest.TestCase):
         if self.read_error and self.read_error[0] == path:
             return FixtureResponse({}, self.read_error[1], {"Location": "https://redirect.invalid"})
         fixtures = {
-            "/api/me": self.identity, f"/api/projects/{PROJECT}": {"id": PROJECT, "workspace_id": WS},
-            ISSUE_PATH: self.issue, f"/api/agents/{COORDINATOR}": self.agent, THREAD_PATH: self.comments,
+            "/api/me": self.identity, f"/api/projects/{PROJECT}": {"id": PROJECT, "workspace_id": workspace},
+            ISSUE_PATH: self.issue, f"/api/agents/{self.registration['coordinator_id']}": self.agent,
+            THREAD_PATH: self.comments,
+            ROOTS_PATH: self.root_comments,
             RUNS_PATH: self.runs, RULES_PATH: self.rules, RULE_RUNS_PATH: self.rule_runs,
             "/api/issue-statuses": {"statuses": self.statuses},
         }
@@ -148,12 +161,42 @@ class TestNativeSource(unittest.TestCase):
     def new_source(self):
         return native.NativeSource(self.registration)
 
+    def appoint(self, agent_id=COORDINATOR, *, generation="fixture-current", since=MINUTE_ZERO):
+        self.registration["coordinator_id"] = self.agent["id"] = agent_id
+        self.registration["roles"]["coordinator"]["id"] = agent_id
+        self.registration["appointment_ssh_config"] = "/fixture/appointment-ssh.conf"
+        appointment = {**{key: self.registration[key] for key in (
+            "instance_id", "workspace_id", "coordinator_id",
+        )}, "generation": generation, "confirmed_since": since}
+        self.registration["_live_appointment"] = appointment
+        return appointment
+
+    def sign_summary(self, number, *, agent_id=COORDINATOR, posted=MINUTE_TWO, recorded=MINUTE_ONE):
+        snapshot = {**BASE_SNAPSHOT, "coordinator_id": agent_id, "recorded_at": recorded}
+        row = comment(str(UUID(int=number)), "/note unblock.v1 " + json.dumps(snapshot), author=agent_id, at=posted)
+        self.comments.append(row)
+        return row
+
+    def use_cached_appointment(self, checked_at=MINUTE_TWO):
+        self.appoint()
+        self.registration["_appointment_cached"] = True
+        self.registration["_appointment_checked_at"] = checked_at
+        self.comments.pop()
+        return self.sign_summary(51)
+
     def add_supplement(self, number, *, author=SUPPLIER, author_type="member", at=MINUTE_TWO, **scope):
         evidence = {**SCOPE, "checkpoint_id": "review-copy", "evidence_ref": "fixture://evidence", **scope}
         row = comment(str(UUID(int=number)), "/note unblock.evidence.v1 " + json.dumps(evidence),
                       author=author, author_type=author_type, at=at)
         self.comments.append(row)
         return row["id"]
+
+    def add_handoff(self, number, *, author=SUPPLIER, author_type="member", at=MINUTE_TWO, **fields):
+        handoff = {**SCOPE, "checkpoint_id": "review-copy", "evidence_ref": "fixture://patrol", **fields}
+        row = comment(str(UUID(int=number)), "/note unblock.handoff.v1 " + json.dumps(handoff),
+                      author=author, author_type=author_type, at=at, parent=None)
+        self.root_comments.append(row)
+        return row
 
     def begin_reminder_run(self):
         self.rules[0].update(enabled=False, last_task_id=REMINDER_RUN)
@@ -172,13 +215,209 @@ class TestNativeSource(unittest.TestCase):
         for row, change, reason in (
             (self.identity, {"id": SUPPLIER}, "identity_mismatch"),
             (self.issue, {"project_id": SUPPLIER}, "issue_scope_mismatch"),
-            (self.agent, {"system_key": "different"}, "coordinator_changed"),
+            (self.agent, {"workspace_id": SUPPLIER}, "coordinator_changed"),
             (self.agent, {"archived_at": MINUTE_TWO}, "coordinator_changed"),
         ):
             with self.subTest(reason=reason), patch.dict(row, change):
                 with self.assertRaises(native.NativeSourceError) as captured:
                     self.new_source().poll()
                 self.assertEqual(captured.exception.code, reason)
+        self.agent.pop("archived_at")
+        with self.assertRaisesRegex(native.NativeSourceError, "coordinator_changed"):
+            self.new_source().poll()
+
+    def test_workspace_custom_coordinator_with_the_same_name_can_receive_a_reminder(self):
+        different_workspace = str(UUID(int=23))
+        self.registration["workspace_id"] = different_workspace
+        for row in (self.issue, self.agent, self.statuses[0]):
+            row["workspace_id"] = different_workspace
+        self.agent.pop("system_key")
+        self.comments[1]["content"] = "/note unblock.v1 " + json.dumps({
+            **BASE_SNAPSHOT, "workspace_id": different_workspace,
+        })
+        source = self.new_source()
+        self.assertEqual(source.poll()["summary_source"]["author_id"], COORDINATOR)
+        self.assertIsNone(source.check_ready())
+        source.notify(MARKER)
+        self.assertEqual(len(self.posted), 1)
+        self.assertEqual(self.posted[0]["agent_id"], COORDINATOR)
+
+    def test_expired_coordinator_appointment_blocks_send(self):
+        self.registration["roles"]["coordinator"]["valid_until"] = MINUTE_TWO
+        source = self.new_source()
+        source.poll()
+        with patch.object(native, "datetime", wraps=datetime) as clock:
+            clock.now.return_value = datetime.fromisoformat(MINUTE_TWO)
+            self.assertEqual(source.check_ready(), "coordinator_appointment_inactive")
+            with self.assertRaisesRegex(native.NativeSourceError, "coordinator_appointment_inactive"):
+                source.notify(MARKER)
+        self.assertEqual(self.posted, [])
+
+    def test_closed_historical_binding_can_find_archived_coordinator_run(self):
+        source = self.new_source()
+        source.poll()
+        source.notify(MARKER)
+        self.begin_reminder_run()
+        self.agent["archived_at"] = MINUTE_TWO
+        self.registration["notifications_enabled"] = False
+        historical = self.new_source()
+        self.assertEqual(historical.lookup(MARKER)["run_id"], REMINDER_RUN)
+        with self.assertRaisesRegex(native.NativeSourceError, "notifications_disabled"):
+            historical.notify(MARKER)
+        self.assertEqual(len(self.posted), 1)
+
+    def test_current_appointment_requires_fresh_summary_even_when_former_agent_returns(self):
+        self.appoint(generation="returned-coordinator", since=MINUTE_ONE)
+        self.comments[1]["content"] = "/note unblock.v1 invalid historical body"
+        self.sign_summary(51, recorded=MINUTE_ZERO)
+        with self.assertRaisesRegex(native.NativeSourceError, "coordinator_summary_unconfirmed"):
+            self.new_source().poll()
+        new = self.sign_summary(52, posted=MINUTE_THREE, recorded=MINUTE_TWO)
+        self.assertEqual(self.new_source().poll()["summary_source"]["comment_id"], new["id"])
+        self.assertEqual(self.posted, [])
+
+    def test_cached_appointment_requests_refresh_only_for_new_scoped_agent_summary(self):
+        current = self.use_cached_appointment()
+        self.sign_summary(52, agent_id=SUPPLIER)
+        different = self.sign_summary(53, agent_id=SUPPLIER, posted=MINUTE_THREE, recorded=MINUTE_TWO)
+        original_content = different["content"]
+        wrong_scope = original_content.replace(PROJECT, "wrong-project")
+        wrong_round = original_content.replace("review-copy", "another-round")
+        with patch.object(native, "read_appointment", side_effect=AssertionError("poll must not dial")):
+            for changes in (
+                {"content": wrong_scope}, {"content": wrong_round}, {"author_id": USER},
+                {"updated_at": MINUTE_TWO}, {"deleted_at": MINUTE_THREE},
+                {"content": "/note unblock.v1 invalid"},
+            ):
+                with self.subTest(changes=changes), patch.dict(different, changes):
+                    self.assertEqual(self.new_source().poll()["summary_source"]["comment_id"], current["id"])
+            with self.assertRaisesRegex(native.NativeSourceError, "coordinator_refresh_required"):
+                self.new_source().poll()
+            with patch.dict(current, {"content": "/note unblock.v1 invalid cached incumbent snapshot"}):
+                with self.assertRaisesRegex(native.NativeSourceError, "coordinator_refresh_required"):
+                    self.new_source().poll()
+            self.registration["_appointment_checked_at"] = MINUTE_THREE
+            self.assertEqual(self.new_source().poll()["summary_source"]["comment_id"], current["id"])
+            self.registration["_appointment_cached"] = False
+            self.registration["_appointment_checked_at"] = MINUTE_TWO
+            self.assertEqual(self.new_source().poll()["summary_source"]["comment_id"], current["id"])
+        self.assertEqual(self.posted, [])
+
+    def test_cached_appointment_with_missing_summary_only_refreshes_on_new_handoff(self):
+        current = self.use_cached_appointment()
+        self.comments.remove(current)
+        self.registration["handoff_member_id"] = USER
+        self.add_handoff(52, author=USER, coordinator_id=SUPPLIER)
+        self.add_handoff(53, author=SUPPLIER, coordinator_id=SUPPLIER, at=MINUTE_THREE)
+        self.add_handoff(54, author=USER, coordinator_id=SUPPLIER, at=MINUTE_THREE,
+                         checkpoint_id="another-round")
+        self.add_handoff(55, author=USER, coordinator_id="invalid", at=MINUTE_THREE)
+        with self.assertRaisesRegex(native.NativeSourceError, "coordinator_summary_unconfirmed"):
+            self.new_source().poll()
+        self.add_handoff(56, author=USER, coordinator_id=SUPPLIER, at=MINUTE_THREE)
+        with self.assertRaisesRegex(native.NativeSourceError, "coordinator_refresh_required"):
+            self.new_source().poll()
+        self.comments.append(current)
+        with self.assertRaisesRegex(native.NativeSourceError, "coordinator_refresh_required"):
+            self.new_source().poll()
+        self.registration["_appointment_checked_at"] = MINUTE_THREE
+        self.assertEqual(self.new_source().poll()["hints"], [])
+        self.assertEqual(self.posted, [])
+
+    def test_unavailable_appointment_cannot_use_static_agent_or_consume_claim(self):
+        self.appoint()
+        self.comments.pop()
+        self.sign_summary(51)
+        source = self.new_source()
+        source.poll()
+        with TemporaryDirectory() as folder:
+            db = os.path.join(folder, "ledger.sqlite3")
+            key, checkpoint = scope_key(self.registration), "review-copy"
+            with patch.object(native, "read_appointment",
+                              side_effect=native.AppointmentUnavailable("timeout")) as read:
+                self.assertIsNone(source.check_ready())
+                read.assert_not_called()
+                deferred = reconcile(db, key, checkpoint, source.notify, source.lookup)
+            read.assert_called_once_with(self.registration["appointment_ssh_config"], "fixture", WS)
+            self.assertEqual(deferred["status"], "deferred")
+            self.assertEqual(deferred["reason"], "coordinator_appointment_unconfirmed")
+            self.assertEqual(reconcile_existing(db, key, checkpoint, source.lookup)["status"], "not_found")
+            self.assertEqual(self.posted, [])
+            recovered_source = native.NativeSource(self.registration, appointment_reader=AppointmentScan(db).refresh)
+            recovered_source.poll()
+            with patch("unblock.appointment.read_appointment", return_value=self.registration["_live_appointment"]):
+                sent = reconcile(db, key, checkpoint, recovered_source.notify, recovered_source.lookup)
+                replay = reconcile(db, key, checkpoint, recovered_source.notify, recovered_source.lookup)
+            self.assertEqual([post["agent_id"] for post in self.posted], [COORDINATOR])
+            self.assertEqual(sent["marker"], deferred["marker"])
+            self.assertEqual(replay["marker"], sent["marker"])
+        del self.registration["_live_appointment"]
+        with self.assertRaisesRegex(native.NativeSourceError, "coordinator_appointment_unconfirmed"):
+            self.new_source().poll()
+        self.assertEqual(len(self.posted), 1)
+
+    def test_handover_after_claim_can_send_once_to_new_agent_while_preserving_marker(self):
+        appointment = self.appoint()
+        self.comments.pop()
+        self.sign_summary(51)
+        source = self.new_source()
+        source.poll()
+        next_appointment = {**appointment, "coordinator_id": SUPPLIER, "generation": "new"}
+        with TemporaryDirectory() as folder:
+            db = os.path.join(folder, "ledger.sqlite3")
+            key, checkpoint = scope_key(self.registration), "review-copy"
+            with patch.object(native, "read_appointment", return_value=next_appointment) as read:
+                self.assertIsNone(source.check_ready())
+                read.assert_not_called()
+                deferred = reconcile(db, key, checkpoint, source.notify, source.lookup)
+            read.assert_called_once_with(self.registration["appointment_ssh_config"], "fixture", WS)
+            self.assertEqual(deferred["status"], "deferred")
+            self.assertEqual(deferred["reason"], "coordinator_appointment_changed")
+            self.assertEqual(self.posted, [])
+            self.appoint(SUPPLIER, generation="new")
+            self.sign_summary(52, agent_id=SUPPLIER, posted=MINUTE_THREE, recorded=MINUTE_TWO)
+            read = Mock(return_value=next_appointment)
+            current = native.NativeSource(self.registration, appointment_reader=read)
+            current.poll()
+            with patch.object(native, "read_appointment", side_effect=AssertionError("use injected authority reader")):
+                self.assertIsNone(current.check_ready())
+                read.assert_not_called()
+                sent = reconcile(db, key, checkpoint, current.notify, current.lookup)
+                replay = reconcile(db, key, checkpoint, current.notify, current.lookup)
+            read.assert_called_once_with(self.registration["appointment_ssh_config"], "fixture", WS)
+        self.assertEqual(sent["status"], "unknown")
+        self.assertEqual(sent["marker"], replay["marker"])
+        self.assertEqual(sent["marker"], deferred["marker"])
+        self.assertEqual([post["agent_id"] for post in self.posted], [SUPPLIER])
+
+    def test_old_rule_holds_new_coordinator_and_recovery_reads_old_run_without_appointment(self):
+        old_source = self.new_source()
+        old_source.poll()
+        with TemporaryDirectory() as folder:
+            db = os.path.join(folder, "ledger.sqlite3")
+            key, checkpoint = scope_key(self.registration), "review-copy"
+            self.lose_post = True
+            undelivered = reconcile(db, key, checkpoint, old_source.notify, old_source.lookup)
+            self.assertEqual(undelivered["status"], "unknown")
+            self.appoint(SUPPLIER, since=MINUTE_ONE)
+            self.sign_summary(51, agent_id=SUPPLIER, posted=MINUTE_THREE, recorded=MINUTE_TWO)
+            current = self.new_source()
+            current.poll()
+            self.assertEqual(current.check_ready(), "previous_coordinator_wakeup_active")
+            self.begin_reminder_run()
+            recovery_source = native.NativeSource({key: value for key, value in self.registration.items()
+                                                   if key not in ("coordinator_id", "roles", "_live_appointment")},
+                                                  recovery_only=True)
+            with patch.object(native, "read_appointment", side_effect=AssertionError("lookup must be independent")):
+                recovered = reconcile_existing(db, key, checkpoint, recovery_source.lookup)
+            self.assertEqual(recovered["status"], "confirmed")
+            self.assertEqual(recovered["receipt"]["coordinator_id"], COORDINATOR)
+            self.assertEqual(recovered["receipt"]["run_id"], REMINDER_RUN)
+            self.assertEqual(recovered["marker"], undelivered["marker"])
+            self.assertEqual(recovery_source.check_ready(), "recovery_only_source")
+            with self.assertRaisesRegex(native.NativeSourceError, "recovery_only_source"):
+                recovery_source.notify(undelivered["marker"])
+        self.assertEqual(len(self.posted), 1)
 
     def test_incomplete_comments_are_rejected_at_http_boundary(self):
         for header in native._INCOMPLETE_COMMENTS:
@@ -230,6 +469,59 @@ class TestNativeSource(unittest.TestCase):
         self.registration["supplement_authors"].append({"type": "member", "id": USER})
         supplement = self.add_supplement(17, author=USER)
         self.assertEqual(self.new_source().poll()["hints"], [f"comment:{supplement}"])
+
+    def test_only_opted_in_fresh_g8_member_handoff_is_a_hint(self):
+        self.add_handoff(12, author=USER)
+        self.add_handoff(13, author_type="agent")
+        self.add_handoff(14, at=MINUTE_ONE)
+        self.add_handoff(15, checkpoint_id="different-round")
+        self.add_handoff(16, thread_id=REMINDER_RUN)
+        self.add_handoff(17)["updated_at"] = "2026-11-21T10:03:00Z"
+        self.add_handoff(18)["deleted_at"] = MINUTE_TWO
+        handoff = self.add_handoff(19, evidence_ref="fixture://contains-untrusted-data")
+
+        self.assertEqual(self.new_source().poll()["hints"], [])
+        self.assertNotIn(("GET", ROOTS_PATH), self.requests)
+        self.registration["handoff_member_id"] = SUPPLIER
+        observed = self.new_source().poll()
+        self.assertEqual(observed["hints"], [f"patrol_handoff:{handoff['id']}"])
+        self.assertEqual(observed["pending"], [])
+
+    def test_partial_or_invalid_g8_handoff_source_fails_closed(self):
+        self.registration["handoff_member_id"] = SUPPLIER
+        source = self.new_source()
+        handoff = self.add_handoff(12)
+        for header in native._INCOMPLETE_COMMENTS:
+            with self.subTest(header=header):
+                self.response_headers[ROOTS_PATH] = {header: "fixture"}
+                with self.assertRaisesRegex(native.NativeSourceError, "multica:incomplete_response"):
+                    source.poll()
+        self.response_headers.pop(ROOTS_PATH)
+        for change, code in (
+            ({"issue_id": PROJECT}, "handoff_comment_scope_mismatch"),
+            ({"parent_id": THREAD}, "handoff_comment_not_top_level"),
+            ({"content_truncated": True}, "handoff_comment_truncated"),
+            ({"content": '/note unblock.handoff.v1 {"x":1,"x":2}'}, "invalid_handoff"),
+            ({"content": '/note unblock.handoff.v1 {"extra":"field"}'}, "invalid_handoff_fields"),
+        ):
+            with self.subTest(code=code), patch.dict(handoff, change):
+                with self.assertRaisesRegex(native.NativeSourceError, code):
+                    source.poll()
+        with self.assertRaisesRegex(native.NativeSourceError, "verified_poll_required"):
+            source.notify(MARKER)
+        self.assertEqual(self.posted, [])
+
+    def test_handoff_is_rechecked_before_sending(self):
+        self.registration["handoff_member_id"] = SUPPLIER
+        handoff = self.add_handoff(12)
+        source = self.new_source()
+        self.assertEqual(source.poll()["hints"], [f"patrol_handoff:{handoff['id']}"])
+        self.assertIsNone(source.check_ready())
+        handoff["deleted_at"] = MINUTE_TWO
+        self.assertEqual(source.check_ready(), "poll_snapshot_changed")
+        with self.assertRaisesRegex(native.NativeSourceError, "poll_snapshot_changed"):
+            source.notify(MARKER)
+        self.assertEqual(self.posted, [])
 
     def test_recorded_at_can_precede_but_cannot_follow_native_publication(self):
         row = self.comments[1]

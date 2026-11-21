@@ -2,13 +2,16 @@
 
 from collections.abc import Mapping
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
 from threading import Lock
+
+from .appointment import AppointmentUnavailable, read_appointment
+from .ledger import NotificationNotSent
 
 try:
     from multica_backend.mailbox import Mailbox, MailboxError
@@ -28,6 +31,7 @@ _MARKER = re.compile(r"unblock\.v1:[0-9a-f]{64}")
 _TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 _SUMMARY = "/note unblock.v1 "
 _EVIDENCE = "/note unblock.evidence.v1 "
+_HANDOFF = "/note unblock.handoff.v1 "
 _REMINDER = (
     "核收原卡登记检查点的新线索或到期事项。请在原线程核对现任岗位、原卡状态和已有在途，"
     "按原授权记静默摘要。此提醒仅请求核收，不授予派发、恢复、写入外部系统或验收的权限。"
@@ -97,12 +101,14 @@ def _id(value, field):
 class NativeSource:
     """Read and remind on a frozen registration. The caller owns persistent send claims."""
 
-    def __init__(self, registration: Mapping):
+    def __init__(self, registration: Mapping, *, recovery_only=False, appointment_reader=None):
         if not isinstance(registration, Mapping):
             raise NativeSourceError("invalid_registration")
         self._scope = {
             field: _id(registration.get(field), field) for field in _SCOPE[1:]
+            if field != "coordinator_id" or not recovery_only
         }
+        self._recovery_only = recovery_only
         self._scope["instance_id"] = _token(registration.get("instance_id"), "invalid_instance_id")
         self._user_id = _id(registration.get("expected_user_id"), "expected_user_id")
         self._origin = registration.get("origin")
@@ -125,20 +131,45 @@ class NativeSource:
         self._project = self._scope["project_id"]
         self._issue = self._scope["issue_id"]
         self._thread = self._scope["thread_id"]
-        self._coordinator = self._scope["coordinator_id"]
+        self._coordinator = self._scope.get("coordinator_id")
+        self._appointment_config = None if recovery_only else registration.get("appointment_ssh_config")
+        self._appointment = None if recovery_only else deepcopy(registration.get("_live_appointment"))
+        self._appointment_reader = appointment_reader
+        self._appointment_watermark = None
+        self._appointment_checked_at = None
+        if self._appointment_config is not None and (
+                not isinstance(self._appointment_config, str) or "\x00" in self._appointment_config
+                or not Path(self._appointment_config).is_absolute()):
+            raise NativeSourceError("coordinator_appointment_unconfirmed")
+        if self._appointment is not None:
+            binding = {key: self._scope[key] for key in ("instance_id", "workspace_id", "coordinator_id")}
+            if (not isinstance(self._appointment, dict)
+                    or self._appointment.keys() != binding.keys() | {"generation", "confirmed_since"}
+                    or any(self._appointment[key] != value for key, value in binding.items())
+                    or not self._appointment_config):
+                raise NativeSourceError("coordinator_appointment_unconfirmed")
+            self._appointment_watermark = _time(self._appointment["confirmed_since"])
+            if registration.get("_appointment_cached") is True:
+                self._appointment_checked_at = _time(registration.get("_appointment_checked_at"))
+        self._handoff_member = None
+        if "handoff_member_id" in registration:
+            self._handoff_member = _id(registration["handoff_member_id"], "handoff_member_id")
         self._checkpoint = registration.get("checkpoint_id")
         if self._checkpoint is not None:
             _token(self._checkpoint, "invalid_registered_checkpoint")
-        roles = registration.get("roles")
+        roles = None if recovery_only else registration.get("roles")
         self._coordinator_term = None
         if roles is not None:
             role = roles.get("coordinator") if isinstance(roles, dict) else None
             if not isinstance(role, dict) or role.get("id") != self._coordinator:
                 raise NativeSourceError("coordinator_registration_mismatch")
+            if not isinstance(role.get("appointment_ref"), str) or not role["appointment_ref"].strip():
+                raise NativeSourceError("coordinator_appointment_unconfirmed")
             end = role.get("valid_until")
-            self._coordinator_term = (
-                _time(role.get("valid_from")), _time(end) if end is not None else None,
-            )
+            start, end = _time(role.get("valid_from")), _time(end) if end is not None else None
+            if end is not None and end <= start:
+                raise NativeSourceError("coordinator_appointment_unconfirmed")
+            self._coordinator_term = start, end
         self._issue_path = f"/api/issues/{self._issue}"
         self._wakeup_path = f"{self._issue_path}/wakeups"
         self._run_id = registration.get("run_id")
@@ -201,7 +232,7 @@ class NativeSource:
             raise NativeSourceError("invalid_native_response")
         return result
 
-    def _bind(self):
+    def _bind(self, *, historical=False):
         config = self._cli("config", "show")
         profiles = re.findall(r"(?m)^Profile:\s+([^\r\n]+)$", config)
         origins = re.findall(r"(?m)^server_url:\s+([^\r\n]+)$", config)
@@ -228,12 +259,16 @@ class NativeSource:
                 or issue.get("id") != self._issue or issue.get("workspace_id") != self._workspace
                 or issue.get("project_id") != self._project):
             raise NativeSourceError("issue_scope_mismatch")
-        agent = self._get(f"/api/agents/{self._coordinator}", dict)
-        if (agent.get("id") != self._coordinator or agent.get("workspace_id") != self._workspace
-                or agent.get("system_key") != "mika" or agent.get("archived_at") is not None):
-            raise NativeSourceError("coordinator_changed")
+        if not historical:
+            self._verify_coordinator()
         _token(issue.get("status"), "invalid_issue_status")
         return issue
+
+    def _verify_coordinator(self):
+        agent = self._get(f"/api/agents/{self._coordinator}", dict)
+        if (agent.get("id") != self._coordinator or agent.get("workspace_id") != self._workspace
+                or "archived_at" not in agent or agent["archived_at"] is not None):
+            raise NativeSourceError("coordinator_changed")
 
     def _thread_rows(self):
         rows = self._get(f"{self._issue_path}/comments?thread={self._thread}", list,
@@ -262,6 +297,30 @@ class NativeSource:
             verified.update(path)
         return rows
 
+    def _summary_suggests_refresh(self, row, refresh_after):
+        content = row.get("content")
+        if (row.get("type") != "comment" or row.get("deleted_at") is not None
+                or row.get("author_type") != "agent" or row.get("author_id") == self._coordinator
+                or not isinstance(content, str) or not content.startswith(_SUMMARY)):
+            return False
+        try:
+            author = _id(row.get("author_id"), "summary_author")
+            posted = _time(row.get("created_at"))
+            if posted <= refresh_after or _time(row.get("updated_at")) != posted:
+                return False
+            snapshot = _json_object(content[len(_SUMMARY):], "invalid_summary")
+            revision = snapshot.get("revision")
+            checkpoint = _token(snapshot.get("checkpoint_id"), "invalid_checkpoint")
+            return (
+                snapshot.get("coordinator_id") == author
+                and all(snapshot.get(key) == value for key, value in self._scope.items() if key != "coordinator_id")
+                and (self._checkpoint is None or checkpoint == self._checkpoint)
+                and type(revision) is int and revision > 0
+                and self._appointment_watermark < _time(snapshot.get("recorded_at")) <= posted
+            )
+        except NativeSourceError:
+            return False
+
     def _summary(self, rows):
         by_round = {}
         candidates = []
@@ -271,14 +330,19 @@ class NativeSource:
                     or not isinstance(content, str) or not content.startswith(_SUMMARY)
                     or row.get("author_type") != "agent" or row.get("author_id") != self._coordinator):
                 continue
+            created = _time(row.get("created_at"))
+            if self._appointment_watermark is not None and created <= self._appointment_watermark:
+                continue
             snapshot = _json_object(content[len(_SUMMARY):], "invalid_summary")
             if any(snapshot.get(key) != expected for key, expected in self._scope.items()):
                 raise NativeSourceError("summary_scope_mismatch")
+            if (self._appointment_watermark is not None
+                    and _time(snapshot.get("recorded_at")) <= self._appointment_watermark):
+                continue
             revision = snapshot.get("revision")
             checkpoint = _token(snapshot.get("checkpoint_id"), "invalid_checkpoint")
             if type(revision) is not int or revision < 1:
                 raise NativeSourceError("invalid_summary_revision")
-            created = _time(row.get("created_at"))
             if _time(row.get("updated_at")) != created:
                 raise NativeSourceError("edited_summary")
             if "recorded_at" in snapshot and _time(snapshot["recorded_at"]) > created:
@@ -331,6 +395,53 @@ class NativeSource:
             by_id[run_id] = row
         return by_id
 
+    def _handoff_hints(self, summary_time, checkpoint, *, refresh_after=None):
+        if self._handoff_member is None:
+            return ()
+        rows = self._get(f"{self._issue_path}/comments?roots_only=true", list,
+                         incomplete_headers=_INCOMPLETE_COMMENTS)
+        seen, hints = set(), []
+        expected = {**self._scope, "checkpoint_id": checkpoint}
+        for row in rows:
+            if not isinstance(row, dict) or row.get("issue_id") != self._issue:
+                raise NativeSourceError("handoff_comment_scope_mismatch")
+            comment_id = _id(row.get("id"), "comment_id")
+            if comment_id in seen:
+                raise NativeSourceError("ambiguous_handoff_comments")
+            seen.add(comment_id)
+            if (row.get("type") != "comment" or row.get("deleted_at") is not None
+                    or row.get("author_type") != "member" or row.get("author_id") != self._handoff_member):
+                continue
+            if "parent_id" not in row or row["parent_id"] is not None:
+                raise NativeSourceError("handoff_comment_not_top_level")
+            if row.get("content_truncated", False) is not False:
+                raise NativeSourceError("handoff_comment_truncated")
+            content = row.get("content")
+            if not isinstance(content, str) or not content.startswith(_HANDOFF):
+                continue
+            posted = _time(row.get("created_at"))
+            if posted <= summary_time or _time(row.get("updated_at")) != posted:
+                continue
+            handoff = _json_object(content[len(_HANDOFF):], "invalid_handoff")
+            if handoff.keys() != expected.keys() | {"evidence_ref"}:
+                raise NativeSourceError("invalid_handoff_fields")
+            if any(handoff[key] != value for key, value in expected.items() if key != "coordinator_id"):
+                continue
+            ref = handoff["evidence_ref"]
+            has_reference = isinstance(ref, str) and bool(ref.strip()) and len(ref) <= 4096
+            if handoff["coordinator_id"] != self._coordinator:
+                if refresh_after is not None and posted > refresh_after and has_reference:
+                    try:
+                        _id(handoff["coordinator_id"], "handoff_coordinator_id")
+                    except NativeSourceError:
+                        continue
+                    raise NativeSourceError("coordinator_refresh_required")
+                continue
+            if not has_reference:
+                raise NativeSourceError("invalid_handoff_evidence_reference")
+            hints.append(f"patrol_handoff:{comment_id}")
+        return tuple(sorted(hints))
+
     def _mailbox_hint(self, snapshot):
         baseline = snapshot.get("mailbox_result_version")
         if type(baseline) is not int or not 0 <= baseline < 2**63:
@@ -350,11 +461,27 @@ class NativeSource:
     def poll(self) -> dict:
         """Return a verified snapshot and post-summary hints from its registered sources."""
         with self._lock:
+            if self._recovery_only:
+                raise NativeSourceError("recovery_only_source")
             self._poll_basis = None
-            issue = self._bind()
+            if self._appointment_config is not None and self._appointment is None:
+                raise NativeSourceError("coordinator_appointment_unconfirmed")
+            refresh_after = self._appointment_checked_at
+            issue = self._bind(historical=refresh_after is not None)
             rows = self._thread_rows()
-            created, summary_source, snapshot = self._summary(rows)
-            hints, pending = [], []
+            if refresh_after is not None and any(self._summary_suggests_refresh(row, refresh_after) for row in rows):
+                raise NativeSourceError("coordinator_refresh_required")
+            try:
+                created, summary_source, snapshot = self._summary(rows)
+            except NativeSourceError as exc:
+                if (refresh_after is not None and self._checkpoint is not None
+                        and exc.code in {"coordinator_summary_unconfirmed", "summary_outside_coordinator_appointment"}):
+                    self._handoff_hints(refresh_after, self._checkpoint, refresh_after=refresh_after)
+                raise
+            handoffs = self._handoff_hints(created, snapshot["checkpoint_id"], refresh_after=refresh_after)
+            if refresh_after is not None:
+                self._verify_coordinator()
+            hints, pending = list(handoffs), []
             for row in rows:
                 content = row.get("content")
                 author = row.get("author_type"), row.get("author_id")
@@ -395,17 +522,18 @@ class NativeSource:
                 except NativeSourceError as exc:
                     pending.append(f"mailbox:{exc}")
             if not pending:
-                self._poll_basis = dict(summary_source), deepcopy(snapshot), issue["status"]
+                self._poll_basis = dict(summary_source), deepcopy(snapshot), issue["status"], handoffs
             return {
                 "snapshot": snapshot, "hints": sorted(hints), "pending": sorted(set(pending)),
                 "summary_source": summary_source,
             }
 
-    def _instruction(self, marker):
+    def _instruction(self, marker, *, coordinator=None):
         if not isinstance(marker, str) or not _MARKER.fullmatch(marker):
             raise NativeSourceError("invalid_reminder_marker")
         binding = {
-            **self._scope, "marker": marker, "type": "coordinator-checkpoint-review",
+            **self._scope, "coordinator_id": coordinator or self._coordinator,
+            "marker": marker, "type": "coordinator-checkpoint-review",
             "source": "registered-issue-thread", "issuer": self._user_id,
         }
         return json.dumps(binding, sort_keys=True, separators=(",", ":")) + "\n" + _REMINDER
@@ -429,13 +557,14 @@ class NativeSource:
                 raise NativeSourceError("invalid_wakeup_response")
         return rules
 
-    def _matching_wakeup(self, marker, instruction, rules):
+    def _matching_wakeup(self, marker, rules, *, historical=False):
         matches = []
         for rule in rules:
             stored = rule["instruction"]
             if marker not in stored:
                 continue
-            if (stored != instruction or rule.get("agent_id") != self._coordinator
+            coordinator = rule["agent_id"] if historical else self._coordinator
+            if (stored != self._instruction(marker, coordinator=coordinator) or rule["agent_id"] != coordinator
                     or rule.get("parent_comment_id") != self._thread or rule.get("created_by") != self._user_id
                     or rule.get("source_task_id") is not None or rule.get("created_by_agent") is not False
                     or rule.get("kind") != "event" or rule.get("event_types") != ["issue.status_changed"]
@@ -474,34 +603,45 @@ class NativeSource:
         if not (_time(rule["created_at"]) <= created <= _time(rule["expires_at"]) and created <= _time(started)):
             raise NativeSourceError("invalid_wakeup_run_time")
         exact = self._issue_runs().get(run_id)
-        if (exact is None or exact.get("agent_id") != self._coordinator
+        if (exact is None or exact.get("agent_id") != rule["agent_id"]
                 or exact.get("started_at") is None or _time(exact["started_at"]) != _time(started)):
             raise NativeSourceError("wakeup_run_scope_unconfirmed")
         return {
-            **self._scope, "marker": marker, "kind": "issue_wakeup", "state": "started",
+            **self._scope, "coordinator_id": rule["agent_id"],
+            "marker": marker, "kind": "issue_wakeup", "state": "started",
             "wakeup_id": rule_id, "run_id": run_id, "started_at": started,
         }
 
     def lookup(self, marker) -> dict | None:
         """Read reconciliation evidence without scheduling, including after restart."""
-        instruction = self._instruction(marker)
+        if not isinstance(marker, str) or not _MARKER.fullmatch(marker):
+            raise NativeSourceError("invalid_reminder_marker")
         with self._lock:
-            self._bind()
+            self._bind(historical=True)
             rules = self._wakeup_rows()
-            return self._delivery(marker, self._matching_wakeup(marker, instruction, rules))
+            return self._delivery(marker, self._matching_wakeup(marker, rules, historical=True))
 
     def _current_send_view(self):
+        if self._recovery_only:
+            raise NativeSourceError("recovery_only_source")
         if not self._enabled:
             raise NativeSourceError("notifications_disabled")
         if self._poll_basis is None:
             raise NativeSourceError("verified_poll_required")
         issue = self._bind()
-        _, summary_source, snapshot = self._summary(self._thread_rows())
-        if (summary_source, snapshot, issue["status"]) != self._poll_basis:
+        created, summary_source, snapshot = self._summary(self._thread_rows())
+        handoffs = self._handoff_hints(created, snapshot["checkpoint_id"])
+        if (summary_source, snapshot, issue["status"], handoffs) != self._poll_basis:
             raise NativeSourceError("poll_snapshot_changed")
         return issue, self._wakeup_rows()
 
     def _require_ready(self, issue, rules):
+        if self._coordinator_term is None:
+            raise NativeSourceError("coordinator_appointment_unconfirmed")
+        start, end = self._coordinator_term
+        now = datetime.now(timezone.utc)
+        if now < start or (end is not None and now >= end):
+            raise NativeSourceError("coordinator_appointment_inactive")
         if issue["status"] in {"cancelled", "done", "paused"}:
             raise NativeSourceError("issue_closed_or_paused")
         catalog = self._get("/api/issue-statuses", dict).get("statuses")
@@ -515,10 +655,18 @@ class NativeSource:
         if categories[0] in _TERMINAL_ISSUE_CATEGORIES:
             raise NativeSourceError("issue_closed_or_paused")
         for existing in rules:
-            if (existing.get("agent_id") == self._coordinator
-                    and existing.get("parent_comment_id") in (self._thread, None)
-                    and (existing["enabled"] or existing.get("last_task_status") in _IN_FLIGHT)):
+            if not (existing["enabled"] or existing.get("last_task_status") in _IN_FLIGHT):
+                continue
+            parent = existing["parent_comment_id"]
+            if existing["agent_id"] == self._coordinator and parent in (self._thread, None):
                 raise NativeSourceError("coordinator_wakeup_already_active")
+            if parent != self._thread:
+                continue
+            instruction = existing["instruction"]
+            marker = _MARKER.search(instruction.partition("\n")[0])
+            if marker and instruction == self._instruction(marker.group(), coordinator=existing["agent_id"]):
+                self._matching_wakeup(marker.group(), [existing], historical=True)
+                raise NativeSourceError("previous_coordinator_wakeup_active")
         if any(run["status"] in _IN_FLIGHT for run in self._issue_runs().values()):
             raise NativeSourceError("issue_run_in_flight")
 
@@ -531,16 +679,31 @@ class NativeSource:
                 return exc.code
             return None
 
+    def _recheck_appointment(self):
+        if self._appointment_config is None:
+            return
+        try:
+            reader = self._appointment_reader or read_appointment
+            current = reader(self._appointment_config, self._scope["instance_id"], self._workspace)
+        except AppointmentUnavailable:
+            raise NativeSourceError("coordinator_appointment_unconfirmed") from None
+        if current != self._appointment:
+            raise NativeSourceError("coordinator_appointment_changed")
+
     def notify(self, marker) -> dict | None:
         """Schedule at most one short-lived rule after the caller commits its claim."""
         instruction = self._instruction(marker)
         with self._lock:
             issue, rules = self._current_send_view()
-            rule = self._matching_wakeup(marker, instruction, rules)
+            rule = self._matching_wakeup(marker, rules)
             checkpoint = self._poll_basis[1]["checkpoint_id"]
             if rule is not None or checkpoint in self._attempted:
                 return self._delivery(marker, rule)
             self._require_ready(issue, rules)
+            try:
+                self._recheck_appointment()
+            except NativeSourceError as exc:
+                raise NotificationNotSent(exc.code) from None
             self._attempted.add(checkpoint)
             self._request("POST", self._wakeup_path, body={
                 "agent_id": self._coordinator, "parent_comment_id": self._thread,
@@ -549,4 +712,4 @@ class NativeSource:
                 "expires_in_seconds": 60, "on_timeout": "end",
             })
             rules = self._wakeup_rows()
-            return self._delivery(marker, self._matching_wakeup(marker, instruction, rules))
+            return self._delivery(marker, self._matching_wakeup(marker, rules))

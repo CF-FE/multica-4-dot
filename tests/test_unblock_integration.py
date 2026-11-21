@@ -7,6 +7,7 @@ from contextlib import redirect_stdout
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
+from uuid import UUID
 
 from unblock.__main__ import main, registrations, run_case, scope_key
 from unblock.ledger import reconcile_existing
@@ -120,6 +121,56 @@ class CheckpointLoopTest(unittest.TestCase):
         self.config.write_text(json.dumps(catalog))
         with self.assertRaises(ValueError):
             registrations(self.config)
+
+    def test_workspace_registry_required_for_production_and_supplies_coordinator(self):
+        catalog = self.write_catalog()
+        with self.assertRaisesRegex(ValueError, "missing workspace coordinator registry"):
+            registrations(self.config, require_workspace_coordinators=True)
+        self.assertEqual(registrations(self.config), [self.reg])
+
+        defaults = catalog["projects"][0]["defaults"]
+        appointed = defaults.pop("coordinator_id")
+        catalog["workspace_coordinators"] = {self.reg["instance_id"]: {
+            self.reg["workspace_id"]: appointed,
+        }}
+        self.config.write_text(json.dumps(catalog))
+        self.assertEqual(registrations(self.config, require_workspace_coordinators=True), [self.reg])
+        catalog["projects"][0]["cases"][0]["coordinator_id"] = appointed
+        self.config.write_text(json.dumps(catalog))
+        with self.assertRaisesRegex(ValueError, "case overlaps project-owned fields"):
+            registrations(self.config, require_workspace_coordinators=True)
+
+    def test_legacy_catalog_rejects_conflicting_enabled_projects_in_one_workspace(self):
+        catalog = self.write_catalog()
+        second = copy.deepcopy(catalog["projects"][0])
+        alternate = str(UUID(int=21))
+        second["defaults"].update(project_id=str(UUID(int=22)), coordinator_id=alternate)
+        second["defaults"]["roles"]["coordinator"]["id"] = alternate
+        second["cases"][0].update(issue_id=str(UUID(int=23)), thread_id=str(UUID(int=24)))
+        catalog["projects"].append(second)
+        self.config.write_text(json.dumps(catalog))
+        with self.assertRaisesRegex(ValueError, "conflicting current coordinator bindings"):
+            registrations(self.config)
+
+        current = self.reg["coordinator_id"]
+        catalog["workspace_coordinators"] = {self.reg["instance_id"]: {self.reg["workspace_id"]: current}}
+        self.config.write_text(json.dumps(catalog))
+        with self.assertRaisesRegex(ValueError, "current case must use the appointed workspace coordinator"):
+            registrations(self.config, require_workspace_coordinators=True)
+
+        second["defaults"]["notifications_enabled"] = False
+        self.config.write_text(json.dumps(catalog))
+        current_reg, historical_reg = registrations(self.config, require_workspace_coordinators=True)
+        self.assertEqual(current_reg["coordinator_id"], current)
+        self.assertEqual(historical_reg["coordinator_id"], alternate)
+        self.assertFalse(historical_reg["notifications_enabled"])
+
+        second["defaults"].update(workspace_id=str(UUID(int=25)), notifications_enabled=True)
+        catalog["workspace_coordinators"][self.reg["instance_id"]][second["defaults"]["workspace_id"]] = alternate
+        self.config.write_text(json.dumps(catalog))
+        current_reg, other_workspace_reg = registrations(self.config, require_workspace_coordinators=True)
+        self.assertEqual(current_reg["roles"]["coordinator"]["name"], other_workspace_reg["roles"]["coordinator"]["name"])
+        self.assertEqual(other_workspace_reg["coordinator_id"], alternate)
 
     def test_prepare_note_formats_only_the_reviewed_snapshot(self):
         self.write_catalog()

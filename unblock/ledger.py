@@ -11,12 +11,18 @@ import sqlite3
 from uuid import UUID
 
 
+class NotificationNotSent(ValueError):
+    """The current claim was stopped by a known pre-POST appointment check."""
+
+
 def _receipt_json(
     callback: Callable[[str], dict | None], marker: str, action: str,
 ) -> tuple[str | None, str | None]:
     try:
         receipt = callback(marker)
-    except Exception:
+    except Exception as exc:
+        if action == "send" and isinstance(exc, NotificationNotSent):
+            raise
         # The transport may have applied the request before reporting failure.
         return None, f"{action}_failed"
     if receipt is None:
@@ -122,7 +128,18 @@ def _reconcile(
         if stored is None:
             receipt = None
             if claimed and send is not None:
-                receipt, reason = _receipt_json(send, marker, "send")
+                try:
+                    receipt, reason = _receipt_json(send, marker, "send")
+                except NotificationNotSent as exc:
+                    # Only this INSERT winner can attest its call stopped before POST.
+                    with db:
+                        released = db.execute("""
+                            DELETE FROM unblock_notifications
+                            WHERE scope_key = ? AND checkpoint_id = ? AND marker = ?
+                              AND receipt_json IS NULL
+                        """, (*key, marker)).rowcount
+                    if released:
+                        return {"status": "deferred", "marker": marker, "receipt": None, "reason": str(exc)}
             if receipt is None:
                 receipt, lookup_reason = _receipt_json(lookup, marker, "lookup")
                 reason = lookup_reason or reason
@@ -132,7 +149,11 @@ def _reconcile(
                         UPDATE unblock_notifications SET receipt_json = ?
                         WHERE scope_key = ? AND checkpoint_id = ? AND receipt_json IS NULL
                     """, (receipt, *key))
-            _, stored = db.execute(read_intent, key).fetchone()
+            intent = db.execute(read_intent, key).fetchone()
+            if intent is None:
+                # The claim holder proved it stopped before POST while we were looking up.
+                return {"status": "not_found", "marker": None, "receipt": None}
+            _, stored = intent
 
     if stored is None:
         return {"status": "unknown", "marker": marker, "receipt": None,

@@ -8,7 +8,7 @@ import tempfile
 import threading
 import unittest
 
-from unblock.ledger import reconcile, reconcile_existing
+from unblock.ledger import NotificationNotSent, reconcile, reconcile_existing
 
 
 SCOPE = '[["instance","multica-a"],["workspace","cloud"],["project","one"],["issue","42"],["thread","9"]]'
@@ -118,6 +118,66 @@ class UnblockLedgerTest(unittest.TestCase):
         self.assertEqual(first, third)
         self.assertEqual(self.sends, [first["marker"]])
         self.assertIn(first["marker"], self.lookups)
+
+    def test_only_an_explicit_pre_post_abort_allows_trying_same_marker_again(self):
+        def appointment_unavailable(_):
+            raise NotificationNotSent("coordinator_appointment_unconfirmed")
+
+        first = reconcile(self.db, SCOPE, CHECKPOINT, appointment_unavailable, self.lookup)
+        self.assertEqual(first, {"status": "deferred", "marker": first["marker"], "receipt": None,
+                                 "reason": "coordinator_appointment_unconfirmed"})
+        self.assertEqual(reconcile_existing(self.db, SCOPE, CHECKPOINT, self.lookup)["status"], "not_found")
+
+        sent = reconcile(self.db, SCOPE, CHECKPOINT, self.send, self.lookup)
+        self.assertEqual(sent["status"], "confirmed")
+        self.assertEqual(sent["marker"], first["marker"])
+        self.assertEqual(self.sends, [sent["marker"]])
+        self.assertEqual(self.lookups, [])
+
+    def test_pre_post_abort_preserves_receipt_observed_by_another_reader(self):
+        def expire_with_observed_receipt(marker):
+            recovered = reconcile_existing(self.db, SCOPE, CHECKPOINT, verified_receipt)
+            self.assertEqual(recovered["receipt"], verified_receipt(marker))
+            raise NotificationNotSent("coordinator_appointment_changed")
+
+        first = reconcile(self.db, SCOPE, CHECKPOINT, expire_with_observed_receipt, self.lookup)
+        self.assertEqual(first["status"], "confirmed")
+        second = reconcile(self.db, SCOPE, CHECKPOINT, self.send, self.lookup)
+        self.assertEqual(first, second)
+        self.assertEqual(self.sends, [])
+
+    def test_reconciliation_observes_pre_post_release_from_another_connection(self):
+        claimed = threading.Event()
+        looking_up = threading.Event()
+        released = threading.Event()
+
+        def abort_before_post(_):
+            claimed.set()
+            if not looking_up.wait(timeout=5):
+                raise TimeoutError("observer did not start lookup")
+            raise NotificationNotSent("coordinator_appointment_changed")
+
+        def lookup_after_release(_):
+            looking_up.set()
+            if not released.wait(timeout=5):
+                raise TimeoutError("sender did not release claim")
+            return None
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            sender = pool.submit(reconcile, self.db, SCOPE, CHECKPOINT, abort_before_post, self.lookup)
+            try:
+                self.assertTrue(claimed.wait(timeout=5))
+                observer = pool.submit(reconcile_existing, self.db, SCOPE, CHECKPOINT, lookup_after_release)
+                deferred = sender.result(timeout=5)
+                self.assertEqual(deferred["status"], "deferred")
+            finally:
+                released.set()
+            self.assertEqual(observer.result(timeout=5), {"status": "not_found", "marker": None, "receipt": None})
+
+        sent = reconcile(self.db, SCOPE, CHECKPOINT, self.send, self.lookup)
+        self.assertEqual(sent["status"], "confirmed")
+        self.assertEqual(sent["marker"], deferred["marker"])
+        self.assertEqual(self.sends, [sent["marker"]])
 
     def test_lost_response_recovers_by_exact_marker(self):
         remote = {}

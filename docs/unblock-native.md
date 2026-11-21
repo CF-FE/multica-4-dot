@@ -10,15 +10,22 @@
 | `expected_user_id` | 当前 API 调用账号的 UUID，通过 `/api/me` 核对 |
 | `allow_private_http` | 可选。经运营者核准的加密私网 IPv4 origin 才设为 true |
 | `notifications_enabled` | 可选。预览与停用使用默认的 false |
+| `handoff_member_id` | 可选。允许为所登记原卡写巡查交接备注的原生 Multica 成员 UUID |
 | `supplement_authors` | 可选。授权补件作者，形如 `[{"type":"member","id":"<UUID>"}]` |
 | `run_id` | 可选。冻结的原 Run 完整 UUID |
 | `mailbox` | 可选。冻结的原 job，形如 `{"job_id":"<ID>","payload_hash":"<SHA-256>","recipient":"<role>"}` |
 
 在已授权进程中通过 `MULTICA_UNBLOCK_ACCESS_TOKEN` 提供操作者 PAT。适配器通过 `config show` 读回具名 profile 和 API origin，随后按实际服务端响应核对 `/api/me` 身份、项目和原卡归属、协调员及原线程。升级后复用宿主 CLI；发行号和提交号用于部署记录，兼容性取决于这些读取和唤醒回执所需的字段与语义。无法确认时返回待核原因。可选信箱读取沿用 `MULTICA_BACKEND_MAILBOX_*` 和既有 Mailbox 客户端。
 
-`poll()` 返回 `snapshot`、`hints`、`pending` 和 `summary_source`。来源对象的 `comment_id`、`author_id`、`created_at` 取自通过核验的原生评论，时间保留服务端原值。原线程中须有现任协调员发布的 `/note unblock.v1 <JSON>`。JSON 带完整登记作用域、正整数 `revision` 和 `checkpoint_id`，见[记录格式](unblock-record-format.md)。适配器按登记 UUID 读取工作区内原生协调员，核对其未归档且 `system_key=mika`。修订用新静默备注追加，同一检查点修订严格递增。摘要的 `recorded_at` 可早于原生发布时间，后续事件以原生发布时间为准。
+腾讯正式写入口通过 `appointment_ssh_config` 实时读取权威任命。登记中的其他项目岗位保持原约束。巡检首次读取和发送前复核须匹配；现任的原生摘要发布时间及摘要内的核收时间均须晚于网关本次激活时刻。权威读取失败时暂停新提醒。离线目录和既有静态配置仍可用于原 CLI；腾讯定时器要求实时来源。见[运维说明](unblock-operations.md#腾讯协调端与-g8-原卡交接)。
+
+历史对账使用原检查点、账本 marker 和原生规则关联的 Agent、线程、Run。旧任归档或权威来源暂不可用时，仍可使用 `recover` 只读对账。同一检查点已发生投递时保留原接收人；进入新任期不自动补发。
+
+`poll()` 返回 `snapshot`、`hints`、`pending` 和 `summary_source`。来源对象的 `comment_id`、`author_id`、`created_at` 取自通过核验的原生评论，时间保留服务端原值。原线程中须有现任协调员发布的 `/note unblock.v1 <JSON>`。JSON 带完整登记作用域、正整数 `revision` 和 `checkpoint_id`，见[记录格式](unblock-record-format.md)。适配器核对目标 Agent 的 UUID、所属工作区、未归档状态及登记任职有效期。原生提醒按这组证据定位。修订用新静默备注追加，同一检查点修订严格递增。摘要的 `recorded_at` 可早于原生发布时间，后续事件以原生发布时间为准。
 
 补件使用 `/note unblock.evidence.v1 <JSON>`。JSON 含六个登记作用域字段、当前 `checkpoint_id` 和非空 `evidence_ref`。补件须由登记的成员或智能体发布，并进入同一原线程。补件和精确 Run 终态采用原生时间戳，早于摘要的事件略过，同刻的事件保留为核收线索。绑定信箱时，摘要带已核的 `mailbox_result_version`，从 0 开始。适配器只用 `whoami` 和 `get_job`，沿原 job 比对归属、受信 payload 哈希和最新结果版本。
+
+登记 `handoff_member_id` 后，巡查可通过原生 `add_issue_note` 在原卡写顶层静默备注，`content` 参数为 `unblock.handoff.v1 <JSON>`。网关添加 `/note `。JSON 只含六个登记作用域字段、当前 `checkpoint_id` 和非空 `evidence_ref`。仅读取匹配指定原生成员、晚于最新协调员摘要、未编辑且未删除的记录，输出 `patrol_handoff:<评论 UUID>`。备注是核收线索。分页不完整时本轮暂停提醒。
 
 核心读取异常抛出 `NativeSourceError`，其 `.code` 为不含凭据或远端响应正文的固定诊断。可选来源缺证列入 `pending`。集成入口在来源待核时暂停新提醒。
 
@@ -38,4 +45,4 @@
 
 ## 夹具验证
 
-`python3 -m unittest discover -s tests -p 'test_unblock_native.py' -v` 从仓库根目录运行。若环境已安装 MCP SDK，使用 `PYTHONPATH=mcp python -m unittest discover -s tests -p 'test_unblock_native.py' -v` 以仓库中的 `multica_backend` 为入口。夹具拦截所有 HTTP 请求和 CLI 调用。目标部署的原生调度与运行时实际启动留待另行授权的隔离验收。
+`python3 -m unittest discover -s tests -p 'test_unblock_native.py' -v` 从仓库根目录运行。若环境已安装 MCP SDK，使用 `PYTHONPATH=mcp python -m unittest discover -s tests -p 'test_unblock_native.py' -v` 以仓库中的 `multica_backend` 为入口。夹具拦截所有 HTTP 请求和 CLI 调用。隔离验收按操作手册核对原生调度与实际 Run。[复验步骤](unblock-operations.md)
