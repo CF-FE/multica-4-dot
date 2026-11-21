@@ -1,6 +1,6 @@
 # Multica 角色创建与 Harness 选型指南
 
-在 Multica 新建或调整智能体时，用本文选主机、运行时、工具和验收任务。角色职责取自 Herdr 角色库，宿主能力以目标机器上的实测为准。本文是本仓库的选型主文档，后续直接更新同一文件。当前范围为 `cloud-work` 的 mac-work 和 win-work，按项目约定暂不纳入 Claude。选型基线为 2026-11-18 的 Multica v0.10.0。工作区协调员条目于 2026-11-20 按 v0.11.0 实例核对，本文时间均为北京时间。[角色库索引（1.0.3）](https://github.com/CF-FE/herdr-4-codexcloud/blob/742ab342355b32b70e2bac5ab8cc64290d56e23b/docs/worker-library/roles/index.json)
+在 Multica 新建或调整智能体时，用本文选主机、运行时、工具和验收任务。新角色职责由所属 Multica 项目的交付目标、运行权限和验收人确定，宿主能力以目标机器上的实测为准。herdr-4-codexcloud 已于 2026-11-21 退役；既有角色的固定版本引用仅用于追溯来源。本文是本仓库的选型主文档，后续直接更新同一文件。当前范围为 `cloud-work` 的 mac-work 和 win-work，按项目约定暂不纳入 Claude。选型基线为 2026-11-18 的 Multica v0.10.0。工作区协调员条目于 2026-11-20 按 v0.11.0 实例核对，本文时间均为北京时间。[历史角色库索引（1.0.3）](https://github.com/CF-FE/herdr-4-codexcloud/blob/742ab342355b32b70e2bac5ab8cc64290d56e23b/docs/worker-library/roles/index.json)
 
 **快速索引**　[找 Mike](#工作区协调员-mike) · [按岗位选](#从角色要交付的结果开始) · [两端版本与实测](#两端实际登记的运行时) · [按架构问题查](#架构比较) · [速度与 Token](#速度与-token) · [实际推理档位](#实际推理档位) · [推荐分工](#推荐分工与换选条件) · [创建与验收](#建一个可以验收的角色) · [按来源查](#资料索引) · [新增或升级](#新增升级或停用时怎样更新本文)
 
@@ -171,7 +171,7 @@ win-work 新角色需要使用现有 GitHub 身份调用 Decision Service 时，
 | DSH | `decision-service-dsh` | 此前未挂载决策 MCP 的验证角色，在首次查询时复用了现有登录。[接入说明](../deployment/decision-access/dsh/README.md) · [CLOU-35](http://10.207.56.3:3000/cloud-work/issues/CLOU-35) |
 | Hermes | `decision-service-hermes` | 知识管理员和新建角色各自完成新会话只读查询。[接入说明](../deployment/decision-access/hermes/README.md) · [CLOU-37](http://10.207.56.3:3000/cloud-work/issues/CLOU-37) |
 
-1. **选职责与样本。** 从角色库当前定义取角色 ID 和版本，写清输入、允许的动作、交付物、原始回报位置和谁验收。例如，软件实现工程师在指定仓库修正一个边界条件，交付差异和可重复的断言，由独立审查员在原卡复核。[角色库公共约定](https://github.com/CF-FE/herdr-4-codexcloud/blob/742ab342355b32b70e2bac5ab8cc64290d56e23b/docs/worker-library/roles/common.md)
+1. **选职责与样本。** 先核对 Multica 工作区已有岗位，再依项目原任务定义角色职责、输入、允许的动作、交付物、回报位置和验收人。例如，软件实现工程师在指定仓库修正一个边界条件，交付差异和可重复的断言，由独立审查员在原卡复核。[Multica 岗位与交办规范](../skills/workspace-coordination/SKILL.md#谁负责什么)
 2. **选主机并核对权限。** 查当前 workspace、主机、provider、版本、已有角色及绑定。默认启用工具，使用工作区写入权限，按任务需要申请提权。分别确认调用者、可用工具、宿主可写路径以及凭据代表的身份，并记录提权由运行时自动应答还是由操作者确认。有硬隔离要求而该组合只有指令约束时，换用经验证的组合或先在隔离账户复验。
 3. **创建后读回。** 以下是 v0.10.0 的 CLI 示例。`WS` 和 `RT` 分别取目标 workspace 和已核对的 runtime ID，`NAME` 与 `INSTRUCTIONS` 取本角色的名称、职责与边界。`AGENT` 取创建结果的 ID。示例选私有、并发 1，共享范围与并发按角色需求单独设置。管理令牌由授权者经平台的私密环境变量入口配置。[CLI 命令参考](../skills/multica-backend/references/cli-v0.10.0.md) · [后端操作与身份](../skills/multica-backend/SKILL.md)
 
