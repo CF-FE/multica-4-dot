@@ -30,11 +30,17 @@ class UnblockModelTest(unittest.TestCase):
 
     def record(self, role, hour=13, **fields):
         scope = {key: self.reg[key] for key in ("instance_id", "workspace_id", "project_id", "issue_id")}
-        return dict(ref=f"fixture:{role}", actor_id=self.role(role), at=at(hour), source_scope=scope, **fields)
+        return {"ref": f"fixture:{role}", "actor_id": self.role(role), "at": at(hour), "source_scope": scope, **fields}
 
     def target_fields(self):
         target = self.snap["target"]
         return {"target_id": target["id"], "target_version": target["version"]}
+
+    def action_receipt(self, role, hour=13, **fields):
+        receipt = self.record(role, hour, **self.target_fields(), checkpoint_id=self.snap["checkpoint_id"],
+                              step=self.snap["target"]["step"], **fields)
+        receipt["source_scope"]["thread_id"] = self.snap["thread_id"]
+        return receipt
 
     def all_gates(self):
         for kind in ("business", "isolation"):
@@ -46,17 +52,17 @@ class UnblockModelTest(unittest.TestCase):
     def recovery(self, verdict=None, scope="first_item"):
         self.all_gates()
         self.snap["recorded_at"] = at(15)
-        self.snap["execution"] = self.record(
-            "project_lead", 14, **self.target_fields(), run_id="run-1", artifact_id="artifact-1",
+        self.snap["execution"] = self.action_receipt(
+            "project_lead", 14, run_id="run-1", artifact_id="artifact-1",
         )
         if verdict:
-            self.snap["acceptance"] = self.record(
-                "acceptor", 15, **self.target_fields(), run_id="run-1", artifact_id="artifact-1",
+            self.snap["acceptance"] = self.action_receipt(
+                "acceptor", 15, run_id="run-1", artifact_id="artifact-1",
                 scope=scope, result=verdict,
             )
 
     def g8_request(self):
-        self.snap["g8_request"] = self.record(
+        self.snap["g8_request"] = self.action_receipt(
             "coordinator", request_id="request-1", read_ack_ref="fixture:read-ack",
         )
 
@@ -90,6 +96,74 @@ class UnblockModelTest(unittest.TestCase):
         result = self.assess()
         self.assertEqual(result["state"], "awaiting_pickup")
         self.assertEqual(result["next_action"], "reconcile_pickup")
+
+    def test_original_pickup_cannot_sign_for_the_next_action_on_the_same_issue(self):
+        self.snap["target"]["step"] = "选择准备项"
+        self.snap["pickup"] = self.action_receipt("project_lead", ref="fixture:selection-accepted")
+        previous = copy.deepcopy(self.snap)
+        self.assertEqual(self.assess()["pickup_ref"], "fixture:selection-accepted")
+        self.reg.pop("checkpoint_id")
+        self.snap.update(checkpoint_id="review-P089", revision=2)
+        self.snap["target"].update(id="P089", version="subtitle-v2", step="核对原音登记与字幕片段")
+        self.snap["evidence"]["technical"].update(self.target_fields())
+        self.recovery("accepted")
+        waiting = self.assess(15)
+        self.assertEqual(waiting["state"], "awaiting_pickup")
+        self.assertIsNone(waiting["pickup_ref"])
+        self.assertEqual(waiting["recorded_pickup_ref"], previous["pickup"]["ref"])
+        self.assertIsNone(waiting["accepted_scope"])
+        self.assertEqual(self.snap["pickup"], previous["pickup"])
+        self.snap["pickup"] = self.action_receipt("project_lead", ref="fixture:p089-accepted")
+        current = self.assess(15)
+        self.assertEqual(current["state"], "recovered")
+        self.assertEqual(current["pickup_ref"], "fixture:p089-accepted")
+        self.assertEqual(current["accepted_scope"], "first_item")
+
+    def test_pickup_requires_a_matching_action_original_thread_target_and_version(self):
+        for changed in ({"checkpoint_id": "old"}, {"step": "别的动作"}, {"target_id": "C001"},
+                        {"target_version": "older"}, {"actor_id": self.role("coordinator")}):
+            with self.subTest(changed=changed):
+                self.snap["pickup"] = {**self.action_receipt("project_lead"), **changed}
+                self.assertEqual(self.assess()["state"], "awaiting_pickup")
+        self.snap["pickup"] = self.action_receipt("project_lead")
+        self.snap["pickup"]["source_scope"]["thread_id"] = "other-branch"
+        self.assertIsNone(self.assess()["pickup_ref"])
+        self.snap["pickup"] = self.record("project_lead")
+        self.assertIsNone(self.assess()["pickup_ref"])
+        self.assertEqual(self.assess()["recorded_pickup_ref"], "fixture:project_lead")
+
+    def test_request_receipt_from_named_executor_is_independent_of_coordinator_receipt(self):
+        self.snap["target"].update(request_id="req-P089", executor_id="worker-7")
+        receipt = self.action_receipt("coordinator")
+        receipt.pop("checkpoint_id")
+        receipt.pop("step")
+        receipt["request_id"] = "req-P089"
+        self.snap["pickup"] = receipt
+        self.assertIsNone(self.assess()["pickup_ref"])
+        receipt["actor_id"] = "worker-7"
+        self.assertEqual(self.assess()["pickup_status"], "accepted")
+        receipt["request_id"] = "req-select"
+        self.assertIsNone(self.assess()["pickup_ref"])
+        receipt["checkpoint_id"] = self.snap["checkpoint_id"]
+        receipt["step"] = self.snap["target"]["step"]
+        self.assertIsNone(self.assess()["pickup_ref"])  # Supplied identifiers disagree.
+        del receipt["request_id"]
+        self.assertEqual(self.assess()["pickup_status"], "accepted")
+        self.snap["target"]["executor_id"] = None
+        receipt["request_id"] = "req-P089"
+        self.assertEqual(self.assess()["owner_id"], self.role("coordinator"))
+        self.assertIsNone(self.assess()["executor_id"])
+        self.assertIsNone(self.assess()["pickup_ref"])
+
+    def test_execution_from_a_previous_action_does_not_hide_the_new_handoff(self):
+        self.recovery("accepted")
+        self.assertEqual(self.assess(15)["state"], "recovered")
+        self.snap["target"]["step"] = "核对 P089 的片段版本"
+        result = self.assess(15)
+        self.assertEqual(result["state"], "awaiting_pickup")
+        self.assertEqual(result["next_action"], "reconcile_pickup")
+        self.assertIsNone(result["accepted_scope"])
+        self.assertIn("execution", self.snap)
 
     def test_elapsed_check_and_elapsed_decision_are_distinct(self):
         for kind in ("business", "isolation"):
@@ -156,6 +230,19 @@ class UnblockModelTest(unittest.TestCase):
         self.assertFalse(self.assess(16)["checkpoint_due"])
         self.assertTrue(self.assess(17)["checkpoint_due"])
         self.assertEqual(self.assess(17)["next_action"], "recheck_g8_plan")
+
+    def test_previous_g8_handover_keeps_its_history_and_cannot_suppress_new_due_check(self):
+        self.g8_request()
+        self.snap["g8_acceptance"] = self.record(
+            "g8", request_id="request-1", next_owner_id=self.role("project_lead"), next_check_event="old-confirmation")
+        self.assertTrue(self.assess()["g8_acceptance_ref"])
+        self.snap["target"].update(id="P089", step="核对原音登记", version="v2")
+        self.snap["next_check_event"] = "P089 原音登记已回证"
+        result = self.assess(16)
+        self.assertIsNone(result["g8_acceptance_ref"])
+        self.assertTrue(result["checkpoint_due"])
+        self.assertEqual(result["next_check_event"], self.snap["next_check_event"])
+        self.assertIn("g8_acceptance", self.snap)
 
     def test_g8_acceptance_requires_time_or_event(self):
         self.g8_request()

@@ -109,8 +109,14 @@ def inspect_case(reg, source, now):
     pending = observation.get("pending", [])
     if not isinstance(pending, list):
         raise ValueError("invalid source coverage")
-    assessment = assess(reg, observation["snapshot"], now)
-    return assessment, hints, pending, observation["snapshot"], observation.get("summary_source")
+    issue_closed = observation.get("issue_closed")
+    if issue_closed is not None and type(issue_closed) is not bool:
+        raise ValueError("invalid Issue status coverage")
+    if issue_closed is None and "issue_status_unconfirmed" not in pending:
+        pending = [*pending, "issue_status_unconfirmed"]
+    assessment = assess(reg, observation["snapshot"], now,
+                        pickup_source_verified=observation.get("pickup_source_verified", False))
+    return assessment, hints, pending, observation["snapshot"], observation.get("summary_source"), issue_closed
 
 
 def should_notify(assessment, hints):
@@ -122,34 +128,39 @@ def run_case(reg, source, *, apply, db_path=None, clock=None):
 
     clock = clock or (lambda: datetime.now(timezone.utc))
     key = scope_key(reg)
-    result, hints, pending, signed, origin = inspect_case(reg, source, clock())
+    result, hints, pending, signed, origin, issue_closed = inspect_case(reg, source, clock())
     output = {"scope": json.loads(key), "assessment": result, "hints": hints, "pending": pending,
-              "basis": "coordinator_reviewed_summary", "summary_source": origin}
+              "basis": "coordinator_reviewed_summary", "summary_source": origin, "issue_closed": issue_closed}
     if pending:
         output["notification"] = "source_unconfirmed"
         return output
-    if not should_notify(result, hints):
+    if issue_closed is True or not should_notify(result, hints):
         output["notification"] = "quiet"
         return output
     output["notification"] = "preview"
+    if apply:
+        if reg.get("notifications_enabled") is not True:
+            output["notification"] = "disabled"
+            return output
+        if db_path is None:
+            raise ValueError("a persistent ledger is required to notify")
+        existing = reconcile_existing(db_path, key, result["checkpoint_id"], source.lookup)
+        if existing["status"] != "not_found":
+            output["notification"] = existing
+            return output
+    if result["activity"] != "clear":
+        output.update(notification="deferred", hold_reason="issue_activity_unconfirmed")
+        return output
     if not apply:
-        return output
-    if reg.get("notifications_enabled") is not True:
-        output["notification"] = "disabled"
-        return output
-    if db_path is None:
-        raise ValueError("a persistent ledger is required to notify")
-    existing = reconcile_existing(db_path, key, result["checkpoint_id"], source.lookup)
-    if existing["status"] != "not_found":
-        output["notification"] = existing
         return output
 
     # Re-read before claiming. A new signed revision can withdraw the action.
-    current, current_hints, current_pending, latest, current_origin = inspect_case(reg, source, clock())
+    current, current_hints, current_pending, latest, current_origin, current_closed = inspect_case(reg, source, clock())
     if (signed != latest or origin != current_origin or current["next_action"] != result["next_action"]
-            or current_pending or not should_notify(current, current_hints)):
+            or current_pending or current_closed is True or current["activity"] != "clear"
+            or not should_notify(current, current_hints)):
         output.update(assessment=current, hints=current_hints, pending=current_pending, summary_source=current_origin,
-                      notification="source_unconfirmed" if current_pending else "changed")
+                      issue_closed=current_closed, notification="source_unconfirmed" if current_pending else "changed")
         return output
     hold = source.check_ready()
     if hold is not None:
@@ -167,6 +178,7 @@ def parser():
         sub.add_argument("--config", required=True, help="Trusted local JSON registration file")
         sub.add_argument("--issue", required=command in ("recover", "prepare-note"),
                          help="Restrict to one registered Issue")
+        sub.add_argument("--thread", help="Restrict an Issue to one registered root comment")
         if command == "prepare-note":
             sub.add_argument("--snapshot", required=True, help="Coordinator-reviewed JSON file to format")
         if command in ("tick", "recover"):
@@ -193,9 +205,22 @@ def main(argv=None, *, registered=None):
         return 0 if proof["status"] == "match_existing" else 1
 
     catalog = registrations(args.config) if registered is None else registered
-    selected = [reg for reg in catalog if not args.issue or reg["issue_id"] == args.issue]
-    if args.issue and len(selected) != 1:
-        raise ValueError("expected exactly one registered case for that Issue")
+    has_issue = args.issue is not None
+    has_thread = args.thread is not None
+    if has_thread and not has_issue:
+        raise ValueError("--thread requires --issue")
+    selected = [
+        reg for reg in catalog
+        if (not has_issue or reg["issue_id"] == args.issue)
+        and (not has_thread or reg["thread_id"] == args.thread)
+    ]
+    exact_case = has_thread or args.command in ("recover", "prepare-note") or (
+        has_issue and args.command == "tick" and args.apply
+    )
+    if exact_case and len(selected) != 1:
+        raise ValueError("expected exactly one registered case; use --issue and --thread to select it")
+    if has_issue and not selected:
+        raise ValueError("no registered case for that Issue")
     if args.command == "tick" and args.apply and not args.db:
         raise ValueError("--apply requires a persistent --db")
     from .appointment import AppointmentScan, AppointmentUnavailable
@@ -238,8 +263,13 @@ def main(argv=None, *, registered=None):
                 owned_by_g8 = (assessment["g8_status"] == "accepted"
                                and assessment["next_action"] in ("follow_g8_plan", "recheck_g8_plan")
                                and assessment["owner_id"] == reg["roles"].get("g8", {}).get("id"))
-                if args.command != "g8" or assessment["g8_pending"] or owned_by_g8 or row["pending"]:
-                    results.append(row)
+                if args.command == "g8":
+                    pickup_pending = assessment["state"] == "awaiting_pickup" and assessment["notification_open"]
+                    if row.get("issue_closed") is True or not (
+                        assessment["g8_pending"] or owned_by_g8 or row["pending"] or pickup_pending
+                    ):
+                        continue
+                results.append(row)
         except (ValueError, OSError, RuntimeError, sqlite3.Error) as exc:
             if args.command == "prepare-note":
                 raise

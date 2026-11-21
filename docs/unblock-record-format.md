@@ -73,11 +73,16 @@
       "ref": "fixture:lead-pickup",
       "actor_id": "00000000-0000-4000-8000-000000000006",
       "at": "2026-11-21T13:00:00+08:00",
+      "target_id": "fixture:first-copy-destination",
+      "target_version": "v1",
+      "checkpoint_id": "first-copy",
+      "step": "生成首件",
       "source_scope": {
         "instance_id": "fixture",
         "workspace_id": "00000000-0000-4000-8000-000000000001",
         "project_id": "00000000-0000-4000-8000-000000000002",
-        "issue_id": "00000000-0000-4000-8000-000000000003"
+        "issue_id": "00000000-0000-4000-8000-000000000003",
+        "thread_id": "00000000-0000-4000-8000-000000000004"
       }
     },
     "evidence": {
@@ -158,23 +163,35 @@
 
 | 摘要字段 | 在通用来源字段之外填写 |
 | --- | --- |
-| `pickup` | 项目负责人的原生接手引用。指派、Run 或信箱结果已读取都不能代替该引用 |
+| `pickup` | 具名执行人在原单明确承接本动作的原生回执，附下文的动作绑定字段。协调员签认摘要时核实原件作者、动作及版本 |
 | `activity` | `clear` 表示相关在途与原产物已核清，可评估后续；`unknown`、`in_flight`、`artifact_unconfirmed` 分别记录查证未完成、在途、原产物待只读核对 |
-| `target` | `id`、`version`、`step`、`acceptance_scope`。对象、来源版本或受阻动作变更时更新对象或版本 |
+| `target` | `id`、`version`、`step`、`acceptance_scope`。可用 `expected_evidence` 写明要交回的具体证据，用 `request_id` 关联原交办。`executor_id` 填原卡具名执行人；尚待协调员落实时填 `null`，省略时沿用登记的项目负责人 |
 | `evidence.<key>` | `target_id`、`target_version`、`valid_until`、`result`。结果为 `confirmed` 或 `rejected`；没有原件则省略该项 |
 | `contacts.<key>`、`pursuers.<key>` | 联系人填写 `name`、`ref`，追证人另带 `id`。两类均为线索或安排，有权补证者从职责索引读取。无追证人时由协调员跟进 |
-| `g8_request` | `request_id`。绑定原信箱时，`job_id` 须与登记的 `mailbox.job_id` 一致，且摘要须有非负整数 `mailbox_result_version`。可附 `read_ack_ref` 记录已读 |
+| `g8_request` | `request_id` 标识本次升级。用当前原线程、目标、版本、检查点和动作绑定本次升级；以往升级的接手时间或事件不覆盖当前动作的复查点。绑定原信箱时，`job_id` 须与登记的 `mailbox.job_id` 一致，且摘要须有非负整数 `mailbox_result_version`。可附 `read_ack_ref` 记录已读 |
 | `g8_acceptance` | 同一个 `request_id`、`next_owner_id`，以及 `next_check_at` 或 `next_check_event`，也可两者都有。回证不得早于请求，定时检查须晚于回证。事件须能从约定的原生补件、指定 Run 或原 job 观察到 |
-| `execution` | `target_id`、`target_version`、`run_id`、`artifact_id`。引用负责人对实际成功执行和产物的回证，时间记录该次执行时点 |
-| `acceptance` | `target_id`、`target_version`、相同的 `run_id` 和 `artifact_id`、`scope`、`result`。范围为 `first_item` 或 `issue`，结论为 `accepted` 或 `rejected` |
+| `execution` | 本动作的绑定字段、`run_id`、`artifact_id`。引用项目负责人对实际成功执行和产物的回证，时间记录该次执行时点 |
+| `acceptance` | 本动作的绑定字段、相同的 `run_id` 和 `artifact_id`、`scope`、`result`。范围为 `first_item` 或 `issue`，结论为 `accepted` 或 `rejected` |
 | `disposition` | `target_id`、`target_version`、`reason`、`status`。暂停填 `paused` 及 `resume_condition`，取消填 `cancelled` |
 
 ## CLI 消费评估结果
+
+**如何把回执绑定到当前动作。** `pickup`、`execution`、`acceptance` 都填写原件的 `source_scope.thread_id`、`target_id` 和 `target_version`。再匹配本次 `checkpoint_id` 和 `step`，或匹配目标登记的原交办 `request_id`。原件同时带多个标识时逐项核对。复查与重放沿用原 ID；独立新动作使用新标识。并行支路在同一 Issue 的不同固定线程分别登记取证和验收范围。
+
+在 Multica 原生入口，具名执行人用本人身份在原根线程回复一条静默接手备注。例如：
+
+```text
+/note unblock.pickup.v1 {"thread_id":"<原根评论 UUID>","checkpoint_id":"review-P089","step":"核对原音登记与字幕片段","target_id":"P089","target_version":"subtitle-v2"}
+```
+
+协调员在摘要中引用 `multica:comment:<这条接手评论的 UUID>`，按原件填写作者、服务端创建时间和相同的绑定字段。读取器在原线程核对作者、未编辑及未删除状态、时间和正文。当前动作的接手声明缺少对应原件时，巡查仍展示“待接手”，暂停新发并核实原引用。回执格式用在已登记的动作级交接。
+
+评估通过 `executor_id`、`pickup_status` 和 `pickup_ref` 展示本动作的执行人、接手状态和有效回执；`recorded_pickup_ref` 保留原摘要引用供追溯。`next_check_at` 或 `next_check_event` 展示复查时间或约定事件。旧摘要缺少动作绑定时仍可读取，当前动作保持待接手。由执行人补本次原件，协调员在原线程追加新修订，保留此前备注。指定执行人承接只证明该人接手，恢复与放行仍沿原授权和指定验收人取证。
 
 评估只有三种 `state`。缺负责人接手为 `awaiting_pickup`，已接手而受阻步骤尚无完整恢复依据为 `blocked`，受阻步骤的实际执行、产物及当时所需权限已核为 `recovered`。实际恢复后才评估验收，`accepted_scope=first_item` 只表示首件已验，`issue_accepted` 仅在目标与指定验收人均明确覆盖整卡时为 true。
 
 `next_action` 优先处理已确认的暂停和取消，其次核对未知或在途活动，再处理取证、恢复和验收。核对发现已有产物时，先沿原记录只读核实与补回证。`verify_and_resume` 由项目负责人沿原授权核对并恢复一次。`owner_id` 标明下一步负责人，缺接手回证时由登记发件人、或默认协调员对账。未通过的验收交回相应范围复核。
 
-G8 清单过滤 `g8_pending=true`。需协调员升级或跟进原请求时为 true。有效具名回证后 `g8_status=accepted`，下一责任人来自原回证，`g8_next_check_event` 和 `g8_next_check_at` 保留约定。暂停、取消和已验收完成时 `notification_open=false`。G8 有效接手后，`checkpoint_due` 只比较新接手时间；仅约定事件时保持 false，由原生读取层提交已核实的事件线索。通知入口同时检查 `notification_open` 以及到期或有效事件。
+G8 的只读清单也展示需要跟进的 `awaiting_pickup` 动作。需协调员升级或跟进原请求时 `g8_pending=true`。有效 G8 回证后 `g8_status=accepted`，下一责任人来自原回证，`g8_next_check_event` 和 `g8_next_check_at` 保留约定。暂停、取消和已验收完成时 `notification_open=false`。G8 有效接手后，`checkpoint_due` 只比较新接手时间；仅约定事件时保持 false，由原生读取层提交已核实的事件线索。通知入口同时检查 `notification_open` 以及到期或有效事件。
 
 必填字段缺失、类型错误、未来签认时间、错项目和错请求返回 `ValueError`。角色、证据时效或目标关联待核时，评估保留相应状态和引用。未知活动、权限读取失败和不全的来源应沿原卡查证。模型只负责评估，修订历史与原件归属由读取层核验，通知、对账及是否开始原动作分别沿既有入口处理。

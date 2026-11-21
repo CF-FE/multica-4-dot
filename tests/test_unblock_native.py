@@ -463,7 +463,90 @@ class TestNativeSource(unittest.TestCase):
         self.assertEqual(self.new_source().poll(), {
             "snapshot": snapshot, "hints": [f"comment:{latest}"], "pending": [],
             "summary_source": {"comment_id": RUN, "author_id": COORDINATOR, "created_at": "2026-11-21T10:01:20Z"},
+            "pickup_source_verified": False, "issue_closed": False,
         })
+
+    def test_explicit_pickup_needs_the_executors_unchanged_original_note(self):
+        snapshot = {**BASE_SNAPSHOT, "target": {"id": "P089", "version": "v2", "step": "核对字幕"},
+                    "recorded_at": MINUTE_TWO}
+        binding = {"target_id": "P089", "target_version": "v2", "thread_id": THREAD,
+                   "checkpoint_id": "review-copy", "step": "核对字幕"}
+        snapshot["pickup"] = {
+            "ref": f"multica:comment:{RUN}", "actor_id": SUPPLIER, "at": MINUTE_ONE,
+            "source_scope": {key: SCOPE[key] for key in ("instance_id", "workspace_id", "project_id", "issue_id", "thread_id")},
+            **{key: value for key, value in binding.items() if key != "thread_id"},
+        }
+        summary = self.comments[1]
+        summary.update(content="/note unblock.v1 " + json.dumps(snapshot), created_at=MINUTE_TWO, updated_at=MINUTE_TWO)
+        missing = self.new_source().poll()
+        self.assertFalse(missing["pickup_source_verified"])
+        self.assertEqual(missing["pending"], ["pickup_source_unconfirmed"])
+        self.assertEqual(missing["snapshot"]["pickup"], snapshot["pickup"])
+
+        original = comment(RUN, "/note unblock.pickup.v1 " + json.dumps(binding),
+                           author=SUPPLIER, author_type="member")
+        self.comments.append(original)
+        observation = self.new_source().poll()
+        self.assertIs(observation["pickup_source_verified"], True)
+        self.assertEqual(observation["pending"], [])
+        for change in (
+            {"updated_at": MINUTE_TWO}, {"deleted_at": MINUTE_TWO}, {"author_id": COORDINATOR},
+            {"author_type": "plugin"}, {"created_at": MINUTE_ZERO, "updated_at": MINUTE_ZERO},
+            {"content": "/note unblock.pickup.v1 " + json.dumps({**binding, "target_version": "v1"})},
+        ):
+            with self.subTest(change=change), patch.dict(original, change):
+                observed = self.new_source().poll()
+                self.assertFalse(observed["pickup_source_verified"])
+                self.assertEqual(observed["pending"], ["pickup_source_unconfirmed"])
+        source = self.new_source()
+        source.poll()
+        original["updated_at"] = MINUTE_TWO
+        self.assertEqual(source.check_ready(), "poll_snapshot_changed")
+        self.assertEqual(self.posted, [])
+        snapshot["pickup"]["target_id"] = "older-target"
+        summary["content"] = "/note unblock.v1 " + json.dumps(snapshot)
+        historical = self.new_source().poll()
+        self.assertFalse(historical["pickup_source_verified"])
+        self.assertEqual(historical["pending"], [])
+
+    def test_request_id_reused_for_changed_action_keeps_the_current_pickup_unverified(self):
+        binding = {"target_id": "P089", "target_version": "v2", "thread_id": THREAD, "request_id": "original-request"}
+        first = {**BASE_SNAPSHOT, "target": {"id": "P089", "version": "v2", "step": "选切片",
+                                           "request_id": "original-request"}}
+        current = {**first, "revision": 2, "recorded_at": MINUTE_THREE,
+                   "target": {**first["target"], "step": "核对字幕"}}
+        current["pickup"] = {
+            "ref": f"multica:comment:{RUN}", "actor_id": SUPPLIER, "at": MINUTE_TWO,
+            "source_scope": {key: SCOPE[key] for key in ("instance_id", "workspace_id", "project_id", "issue_id", "thread_id")},
+            **{key: value for key, value in binding.items() if key != "thread_id"},
+        }
+        original = comment(RUN, "/note unblock.pickup.v1 " + json.dumps(binding),
+                           author=SUPPLIER, at=MINUTE_TWO)
+        revised = comment(RULE, "/note unblock.v1 " + json.dumps(current), at=MINUTE_THREE)
+        self.comments[1]["content"] = "/note unblock.v1 " + json.dumps(first)
+        self.comments.extend((original, revised))
+        source = self.new_source()
+        observed = source.poll()
+        self.assertFalse(observed["pickup_source_verified"])
+        self.assertEqual(observed["pending"], ["coordinator_request_conflict"])
+        self.assertEqual(observed["snapshot"], current)
+        self.assertEqual(source.check_ready(), "verified_poll_required")
+        self.assertEqual(self.posted, [])
+
+    def test_native_status_confirms_builtin_and_custom_terminal_cards(self):
+        for status in ("cancelled", "done", "paused"):
+            with self.subTest(status=status), patch.dict(self.issue, {"status": status}):
+                self.assertIs(self.new_source().poll()["issue_closed"], True)
+        with patch.dict(self.statuses[0], {"category": "done"}):
+            self.assertIs(self.new_source().poll()["issue_closed"], True)
+        with patch.dict(self.statuses[0], {"workspace_id": PROJECT}):
+            observed = self.new_source().poll()
+            self.assertIsNone(observed["issue_closed"])
+            self.assertEqual(observed["pending"], ["issue_status_unconfirmed"])
+        self.read_error = ("/api/issue-statuses", 503)
+        observed = self.new_source().poll()
+        self.assertIsNone(observed["issue_closed"])
+        self.assertEqual(observed["pending"], ["issue_status_unconfirmed"])
 
     def test_registered_operator_can_post_an_authorized_supplement(self):
         self.registration["supplement_authors"].append({"type": "member", "id": USER})
@@ -661,6 +744,7 @@ class TestNativeSource(unittest.TestCase):
             source.poll()
             with self.assertRaisesRegex(native.NativeSourceError, "issue_closed_or_paused"):
                 source.notify(MARKER)
+        source.poll()
         self.rules.append({"id": RULE, "workspace_id": WS, "issue_id": ISSUE, "agent_id": COORDINATOR,
                            "parent_comment_id": THREAD, "instruction": "Existing reminder", "enabled": True})
         with self.assertRaisesRegex(native.NativeSourceError, "coordinator_wakeup_already_active"):

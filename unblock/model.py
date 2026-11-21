@@ -9,6 +9,7 @@ _IDENTITY = (*_SCOPE, "thread_id", "coordinator_id")
 _CORE_ROLES = ("coordinator", "sender", "project_lead", "acceptor", "g8", "disposition")
 _RECORD_KEYS = ("ref", "actor_id", "at", "source_scope")
 _TARGET_KEYS = ("target_id", "target_version")
+_ACTION_KEYS = ("checkpoint_id", "request_id", "step")
 _ACCEPTANCE_SCOPES = ("first_item", "issue")
 _ROLE_KEY = re.compile(r"[a-z][a-z0-9_]{0,63}")
 _TIMESTAMP = re.compile(
@@ -105,13 +106,18 @@ def _signed_by(record, roles, key):
     return bool(record and record["actor_id"] == (_role_at(roles, key, record["at"]) or {}).get("id"))
 
 
-def _record(value, path, identity, recorded_at, text_fields=(), other_fields=(), optional=()):
-    _object(value, path, (*_RECORD_KEYS, *text_fields, *other_fields), optional)
-    scope = _object(value["source_scope"], f"{path}.source_scope", _SCOPE)
+def _record(value, path, identity, recorded_at, text_fields=(), other_fields=(), optional=(), *, action=False):
+    _object(value, path, (*_RECORD_KEYS, *text_fields, *other_fields), (*optional, *_ACTION_KEYS) if action else optional)
+    scope = _object(value["source_scope"], f"{path}.source_scope", _SCOPE, ("thread_id",) if action else ())
     for key in _SCOPE:
         if scope[key] != identity[key]:
             raise ValueError(f"{path}.source_scope.{key} does not match registration")
     result = dict(value)
+    if action:
+        if "thread_id" in scope:
+            _text(scope["thread_id"], f"{path}.source_scope.thread_id")
+        for field in value.keys() & (*_ACTION_KEYS, *_TARGET_KEYS):
+            _text(value[field], f"{path}.{field}")
     for field in ("ref", "actor_id", *text_fields):
         result[field] = _text(value[field], f"{path}.{field}")
     result["at"] = _time(value["at"], f"{path}.at")
@@ -134,6 +140,25 @@ def _matches_target(record, target):
     return record["target_id"] == target["id"] and record["target_version"] == target["version"]
 
 
+def _action_binding(record, target, thread_id, checkpoint_id, *, match_request=True):
+    """Partial historical evidence can need reconciliation; evidence for another action cannot sign for this one."""
+    if record is None:
+        return "missing"
+    original_thread = record["source_scope"].get("thread_id")
+    expected = {"target_id": target["id"], "target_version": target["version"],
+                "checkpoint_id": checkpoint_id, "step": target["step"]}
+    if match_request:
+        expected["request_id"] = target.get("request_id")
+    if ((original_thread is not None and original_thread != thread_id)
+            or any(record[key] != expected[key] for key in expected if key in record)):
+        return "different_action"
+    if original_thread is None or any(key not in record for key in _TARGET_KEYS):
+        return "unbound"
+    if (match_request and "request_id" in record) or ("checkpoint_id" in record and "step" in record):
+        return "matched"
+    return "unbound"
+
+
 def _gate_status(record, roles, kind, target, when):
     if not record or when < record["at"]:
         return "missing"
@@ -154,7 +179,7 @@ def _g8_records(snapshot, registration, parse):
         job_id = _text(mailbox["job_id"], "registration.mailbox.job_id")
     if "mailbox_result_version" in snapshot or mailbox is not None:
         _integer(snapshot.get("mailbox_result_version"), "snapshot.mailbox_result_version", 0)
-    request = parse("g8_request", ("request_id",), optional=("job_id", "read_ack_ref"))
+    request = parse("g8_request", ("request_id",), optional=("job_id", "read_ack_ref", *_TARGET_KEYS), action=True)
     if request:
         if ("job_id" in request or job_id is not None) and (
             _text(request.get("job_id"), "snapshot.g8_request.job_id") != job_id
@@ -179,7 +204,7 @@ def _g8_records(snapshot, registration, parse):
     return request, receipt
 
 
-def assess(registration: dict, snapshot: dict, now: datetime) -> dict:
+def assess(registration: dict, snapshot: dict, now: datetime, *, pickup_source_verified=True) -> dict:
     """Validate a trusted registration and native-verified snapshot, then recommend a next step."""
     if not isinstance(now, datetime) or now.utcoffset() is None:
         raise ValueError("now must be a timezone-aware datetime")
@@ -188,7 +213,7 @@ def assess(registration: dict, snapshot: dict, now: datetime) -> dict:
     _object(
         snapshot, "snapshot",
         (*_IDENTITY, "checkpoint_id", "revision", "recorded_at", "due_at", "target", "activity", "evidence"),
-        ("decision_due_at", "pickup", "contacts", "pursuers", "g8_request", "g8_acceptance",
+        ("decision_due_at", "next_check_event", "pickup", "contacts", "pursuers", "g8_request", "g8_acceptance",
          "execution", "acceptance", "disposition", "no_local_action", "mailbox_result_version"),
     )
     for key, value in identity.items():
@@ -206,6 +231,9 @@ def assess(registration: dict, snapshot: dict, now: datetime) -> dict:
     if not _role_at(roles, "coordinator", recorded_at) or not _role_at(roles, "coordinator", now):
         raise ValueError("snapshot.recorded_at and now must be covered by the coordinator appointment")
     due_at = None if snapshot["due_at"] is None else _time(snapshot["due_at"], "snapshot.due_at")
+    next_check_event = snapshot.get("next_check_event")
+    if next_check_event is not None:
+        _text(next_check_event, "snapshot.next_check_event")
     decision_due_at = snapshot.get("decision_due_at")
     if decision_due_at is not None:
         decision_due_at = _time(decision_due_at, "snapshot.decision_due_at")
@@ -215,17 +243,27 @@ def assess(registration: dict, snapshot: dict, now: datetime) -> dict:
     activity = _choice(snapshot["activity"], "snapshot.activity",
                        ("clear", "unknown", "in_flight", "artifact_unconfirmed"))
 
-    target = _object(snapshot["target"], "snapshot.target", ("id", "version", "step", "acceptance_scope"))
+    target = _object(snapshot["target"], "snapshot.target", ("id", "version", "step", "acceptance_scope"),
+                     ("request_id", "executor_id", "expected_evidence"))
     for field in ("id", "version", "step"):
         _text(target[field], f"snapshot.target.{field}")
     scope = _choice(target["acceptance_scope"], "snapshot.target.acceptance_scope", _ACCEPTANCE_SCOPES)
+    if "request_id" in target:
+        _text(target["request_id"], "snapshot.target.request_id")
+    if "expected_evidence" in target:
+        _text(target["expected_evidence"], "snapshot.target.expected_evidence")
+    lead_id = roles.get("project_lead", {}).get("id")
+    executor_id = target.get("executor_id", lead_id)
+    if executor_id is not None:
+        _text(executor_id, "snapshot.target.executor_id")
 
-    def parse(key, text_fields=(), other_fields=(), optional=()):
+    def parse(key, text_fields=(), other_fields=(), optional=(), *, action=False):
         if key not in snapshot:
             return None
-        return _record(snapshot[key], f"snapshot.{key}", identity, recorded_at, text_fields, other_fields, optional)
+        return _record(snapshot[key], f"snapshot.{key}", identity, recorded_at, text_fields, other_fields,
+                       optional, action=action)
 
-    pickup = parse("pickup")
+    pickup = parse("pickup", optional=_TARGET_KEYS, action=True)
     leads = _people(snapshot, "contacts", ("name", "ref"), required)
     pursuers = _people(snapshot, "pursuers", ("id", "name", "ref"), required)
     observed = _object(snapshot["evidence"], "snapshot.evidence", optional=required)
@@ -238,10 +276,11 @@ def assess(registration: dict, snapshot: dict, now: datetime) -> dict:
         gates[kind] = record
 
     request, receipt = _g8_records(snapshot, registration, parse)
-    request_verified = _signed_by(request, roles, "coordinator")
+    request_binding = _action_binding(request, target, identity["thread_id"], checkpoint_id, match_request=False)
+    request_verified = request_binding == "matched" and _signed_by(request, roles, "coordinator")
     receipt_verified = request_verified and _signed_by(receipt, roles, "g8")
-    execution = parse("execution", (*_TARGET_KEYS, "run_id", "artifact_id"))
-    acceptance = parse("acceptance", (*_TARGET_KEYS, "run_id", "artifact_id"), ("scope", "result"))
+    execution = parse("execution", (*_TARGET_KEYS, "run_id", "artifact_id"), action=True)
+    acceptance = parse("acceptance", (*_TARGET_KEYS, "run_id", "artifact_id"), ("scope", "result"), action=True)
     if acceptance:
         _choice(acceptance["scope"], "snapshot.acceptance.scope", _ACCEPTANCE_SCOPES)
         _choice(acceptance["result"], "snapshot.acceptance.result", ("accepted", "rejected"))
@@ -265,17 +304,26 @@ def assess(registration: dict, snapshot: dict, now: datetime) -> dict:
         for kind in required
     }
     missing = [kind for kind, item in evidence.items() if item["status"] != "confirmed"]
-    picked_up = _signed_by(pickup, roles, "project_lead") and "project_lead" in current_roles
+    pickup_binding = _action_binding(pickup, target, identity["thread_id"], checkpoint_id)
+    execution_binding = _action_binding(execution, target, identity["thread_id"], checkpoint_id)
+    acceptance_binding = _action_binding(acceptance, target, identity["thread_id"], checkpoint_id)
+    pickup_verified = (
+        pickup_binding == "matched" and pickup_source_verified is True
+        and pickup["actor_id"] == executor_id
+        and (executor_id != lead_id or _signed_by(pickup, roles, "project_lead"))
+    )
+    picked_up = pickup_verified and (executor_id != lead_id or "project_lead" in current_roles)
     recovered = (
-        _signed_by(pickup, roles, "project_lead")
+        pickup_verified
         and _signed_by(execution, roles, "project_lead")
         and pickup["at"] <= execution["at"]
-        and _matches_target(execution, target)
+        and execution_binding == "matched"
         and all(_gate_status(gates.get(kind), roles, kind, target, execution["at"]) == "confirmed"
                 for kind in required)
     )
     acceptance_verified = (
-        recovered and _signed_by(acceptance, roles, "acceptor") and _matches_target(acceptance, target)
+        recovered and _signed_by(acceptance, roles, "acceptor")
+        and acceptance_binding == "matched"
         and acceptance["at"] >= execution["at"]
         and (scope == "issue" or acceptance["scope"] == scope)
         and all(acceptance[key] == execution[key] for key in ("run_id", "artifact_id"))
@@ -308,18 +356,22 @@ def assess(registration: dict, snapshot: dict, now: datetime) -> dict:
             action = "review_affected_scope"
         else:
             action = "seek_acceptance"
-    elif execution or acceptance:
+    elif execution_binding in ("matched", "unbound") or acceptance_binding in ("matched", "unbound"):
         action = "reconcile_execution"
     elif not picked_up:
         action = "reconcile_pickup"
-        owner = current_roles.get("sender", {}).get("id", owner)
+        if executor_id is not None:
+            owner = current_roles.get("sender", {}).get("id", owner)
+    elif not missing and "project_lead" not in current_roles:
+        action = "request_g8_review"
+        g8_pending = True
     elif not missing:
         action = "verify_and_resume"
         owner = current_roles["project_lead"]["id"]
     elif receipt_verified:
         action = "recheck_g8_plan" if checkpoint_due else "follow_g8_plan"
         owner = receipt["next_owner_id"]
-    elif request:
+    elif request_verified:
         action = "reconcile_g8_pickup"
         g8_pending = True
     elif decision_overdue or no_local_action or any(evidence[kind]["authority"] is None for kind in missing):
@@ -345,6 +397,8 @@ def assess(registration: dict, snapshot: dict, now: datetime) -> dict:
         "g8_next_check_at": g8_next_check_at.isoformat() if g8_next_check_at else None,
         "g8_next_check_event": receipt.get("next_check_event") if receipt_verified else None,
         "checkpoint_due": checkpoint_due,
+        "next_check_at": effective_due_at.isoformat() if effective_due_at else None,
+        "next_check_event": receipt.get("next_check_event") if receipt_verified else next_check_event,
         "decision_overdue": decision_overdue,
         "notification_open": not disposed and not scope_accepted,
         "disposition": disposition["status"] if disposed else "unverified" if disposition else "active",
@@ -352,7 +406,11 @@ def assess(registration: dict, snapshot: dict, now: datetime) -> dict:
         "resume_condition": disposition.get("resume_condition") if disposed else None,
         "target": dict(target),
         "evidence": evidence,
+        "executor_id": executor_id,
+        "pickup_status": "accepted" if picked_up or recovered else "awaiting_pickup",
+        "pickup_binding": pickup_binding,
         "pickup_ref": pickup["ref"] if picked_up or recovered else None,
+        "recorded_pickup_ref": pickup["ref"] if pickup else None,
         "activity": activity,
         "execution_ref": execution["ref"] if execution else None,
         "acceptance_ref": acceptance["ref"] if acceptance_verified else None,

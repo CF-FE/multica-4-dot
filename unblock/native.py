@@ -12,6 +12,7 @@ from threading import Lock
 
 from .appointment import AppointmentUnavailable, read_appointment
 from .ledger import NotificationNotSent
+from .model import _action_binding
 
 try:
     from multica_backend.mailbox import Mailbox, MailboxError
@@ -32,6 +33,9 @@ _TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 _SUMMARY = "/note unblock.v1 "
 _EVIDENCE = "/note unblock.evidence.v1 "
 _HANDOFF = "/note unblock.handoff.v1 "
+_PICKUP = "/note unblock.pickup.v1 "
+_PICKUP_REF = re.compile(r"multica:comment:([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})")
+_PICKUP_BINDING_FIELDS = ("target_id", "target_version", "checkpoint_id", "request_id", "step")
 _REMINDER = (
     "核收原卡登记检查点的新线索或到期事项。请在原线程核对现任岗位、原卡状态和已有在途，"
     "按原授权记静默摘要。此提醒仅请求核收，不授予派发、恢复、写入外部系统或验收的权限。"
@@ -39,7 +43,7 @@ _REMINDER = (
 _TERMINAL = {"completed", "failed", "cancelled"}
 _IN_FLIGHT = {"queued", "deferred", "dispatched", "running", "waiting_local_directory"}
 _OPEN_ISSUE_CATEGORIES = ("backlog", "todo", "in_progress", "in_review", "blocked")
-_TERMINAL_ISSUE_CATEGORIES = ("done", "cancelled")
+_TERMINAL_ISSUE_CATEGORIES = ("done", "cancelled", "paused")
 _INCOMPLETE_COMMENTS = (
     "X-Comments-Truncated", "X-Multica-Next-Before", "X-Multica-Next-Before-Id",
 )
@@ -261,7 +265,6 @@ class NativeSource:
             raise NativeSourceError("issue_scope_mismatch")
         if not historical:
             self._verify_coordinator()
-        _token(issue.get("status"), "invalid_issue_status")
         return issue
 
     def _verify_coordinator(self):
@@ -373,7 +376,66 @@ class NativeSource:
             "author_id": comment["author_id"],
             "created_at": comment["created_at"],
         }
-        return created, source, snapshot
+        target = snapshot.get("target")
+        request_conflict = False
+        if isinstance(target, dict) and isinstance(target.get("request_id"), str):
+            action = (snapshot["checkpoint_id"], target.get("id"), target.get("version"), target.get("step"))
+            for _, _, previous in candidates[:-1]:
+                old = previous.get("target")
+                if not isinstance(old, dict) or old.get("request_id") != target["request_id"]:
+                    continue
+                previous_action = (previous["checkpoint_id"], old.get("id"), old.get("version"), old.get("step"))
+                if previous_action != action:
+                    request_conflict = True
+                    break
+        return created, source, snapshot, request_conflict
+
+    def _pickup_source(self, rows, snapshot):
+        pickup = snapshot.get("pickup")
+        target = snapshot.get("target")
+        if (not isinstance(pickup, dict) or not isinstance(pickup.get("source_scope"), dict)
+                or not isinstance(target, dict) or not {"id", "version", "step"} <= target.keys()
+                or _action_binding(pickup, target, self._thread, snapshot["checkpoint_id"]) != "matched"):
+            return False, None
+
+        ref = pickup.get("ref")
+        match = _PICKUP_REF.fullmatch(ref) if isinstance(ref, str) else None
+        if match is None:
+            return False, "pickup_source_unconfirmed"
+        row = next((row for row in rows if row["id"] == match[1]), None)
+        if (row is None or row.get("type") != "comment" or row.get("deleted_at") is not None
+                or row.get("author_type") not in ("agent", "member")
+                or row.get("author_id") != pickup.get("actor_id")):
+            return False, "pickup_source_unconfirmed"
+        content = row.get("content")
+        if not isinstance(content, str) or not content.startswith(_PICKUP):
+            return False, "pickup_source_unconfirmed"
+        try:
+            actor = _id(row.get("author_id"), "pickup_author_id")
+            posted = _time(row.get("created_at"))
+            payload = _json_object(content[len(_PICKUP):], "invalid_pickup")
+            expected = {"thread_id": self._thread,
+                        **{field: pickup[field] for field in _PICKUP_BINDING_FIELDS if field in pickup}}
+            if (row["author_id"] == actor and posted == _time(pickup.get("at"))
+                    and posted == _time(row.get("updated_at")) and payload == expected):
+                return True, None
+        except NativeSourceError:
+            pass
+        return False, "pickup_source_unconfirmed"
+
+    def _issue_closed(self, issue):
+        status = _token(issue.get("status"), "issue_status_unconfirmed")
+        if status in _TERMINAL_ISSUE_CATEGORIES:
+            return True
+        catalog = self._get("/api/issue-statuses", dict).get("statuses")
+        if not isinstance(catalog, list) or any(
+            not isinstance(row, dict) or row.get("workspace_id") != self._workspace for row in catalog
+        ):
+            raise NativeSourceError("status_catalog_unconfirmed")
+        categories = [row.get("category") for row in catalog if row.get("key") == status]
+        if len(categories) != 1 or categories[0] not in (*_OPEN_ISSUE_CATEGORIES, *_TERMINAL_ISSUE_CATEGORIES):
+            raise NativeSourceError("issue_status_unconfirmed")
+        return categories[0] in _TERMINAL_ISSUE_CATEGORIES
 
     def _issue_runs(self):
         runs = self._get(f"{self._issue_path}/task-runs?scope=issue&view=timeline", list,
@@ -472,7 +534,7 @@ class NativeSource:
             if refresh_after is not None and any(self._summary_suggests_refresh(row, refresh_after) for row in rows):
                 raise NativeSourceError("coordinator_refresh_required")
             try:
-                created, summary_source, snapshot = self._summary(rows)
+                created, summary_source, snapshot, request_conflict = self._summary(rows)
             except NativeSourceError as exc:
                 if (refresh_after is not None and self._checkpoint is not None
                         and exc.code in {"coordinator_summary_unconfirmed", "summary_outside_coordinator_appointment"}):
@@ -482,6 +544,17 @@ class NativeSource:
             if refresh_after is not None:
                 self._verify_coordinator()
             hints, pending = list(handoffs), []
+            pickup_source_verified, pickup_pending = self._pickup_source(rows, snapshot)
+            if pickup_pending:
+                pending.append(pickup_pending)
+            if request_conflict:
+                pickup_source_verified = False
+                pending.append("coordinator_request_conflict")
+            try:
+                issue_closed = self._issue_closed(issue)
+            except NativeSourceError:
+                issue_closed = None
+                pending.append("issue_status_unconfirmed")
             for row in rows:
                 content = row.get("content")
                 author = row.get("author_type"), row.get("author_id")
@@ -522,10 +595,11 @@ class NativeSource:
                 except NativeSourceError as exc:
                     pending.append(f"mailbox:{exc}")
             if not pending:
-                self._poll_basis = dict(summary_source), deepcopy(snapshot), issue["status"], handoffs
+                self._poll_basis = dict(summary_source), deepcopy(snapshot), issue["status"], handoffs, pickup_source_verified
             return {
                 "snapshot": snapshot, "hints": sorted(hints), "pending": sorted(set(pending)),
-                "summary_source": summary_source,
+                "summary_source": summary_source, "pickup_source_verified": pickup_source_verified,
+                "issue_closed": issue_closed,
             }
 
     def _instruction(self, marker, *, coordinator=None):
@@ -629,9 +703,12 @@ class NativeSource:
         if self._poll_basis is None:
             raise NativeSourceError("verified_poll_required")
         issue = self._bind()
-        created, summary_source, snapshot = self._summary(self._thread_rows())
+        rows = self._thread_rows()
+        created, summary_source, snapshot, request_conflict = self._summary(rows)
         handoffs = self._handoff_hints(created, snapshot["checkpoint_id"])
-        if (summary_source, snapshot, issue["status"], handoffs) != self._poll_basis:
+        pickup_source_verified, pickup_pending = self._pickup_source(rows, snapshot)
+        if (request_conflict or pickup_pending
+                or (summary_source, snapshot, issue.get("status"), handoffs, pickup_source_verified) != self._poll_basis):
             raise NativeSourceError("poll_snapshot_changed")
         return issue, self._wakeup_rows()
 
@@ -642,17 +719,7 @@ class NativeSource:
         now = datetime.now(timezone.utc)
         if now < start or (end is not None and now >= end):
             raise NativeSourceError("coordinator_appointment_inactive")
-        if issue["status"] in {"cancelled", "done", "paused"}:
-            raise NativeSourceError("issue_closed_or_paused")
-        catalog = self._get("/api/issue-statuses", dict).get("statuses")
-        if not isinstance(catalog, list) or any(
-            not isinstance(row, dict) or row.get("workspace_id") != self._workspace for row in catalog
-        ):
-            raise NativeSourceError("status_catalog_unconfirmed")
-        categories = [row.get("category") for row in catalog if row.get("key") == issue["status"]]
-        if len(categories) != 1 or categories[0] not in (*_OPEN_ISSUE_CATEGORIES, *_TERMINAL_ISSUE_CATEGORIES):
-            raise NativeSourceError("issue_status_unconfirmed")
-        if categories[0] in _TERMINAL_ISSUE_CATEGORIES:
+        if self._issue_closed(issue):
             raise NativeSourceError("issue_closed_or_paused")
         for existing in rules:
             if not (existing["enabled"] or existing.get("last_task_status") in _IN_FLIGHT):

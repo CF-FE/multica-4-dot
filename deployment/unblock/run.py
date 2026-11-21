@@ -28,6 +28,7 @@ DIAGNOSTICS = set("""
     ambiguous_current_summary ambiguous_handoff_comments ambiguous_summary_revision ambiguous_thread
     ambiguous_wakeup ambiguous_wakeup_run bad_request cli_read_failed comment_scope_mismatch
     comment_thread_mismatch conflict coordinator_changed coordinator_appointment_unconfirmed
+    coordinator_request_conflict pickup_source_unconfirmed issue_activity_unconfirmed
     coordinator_appointment_changed previous_coordinator_wakeup_active recovery_only_source
     coordinator_appointment_inactive coordinator_summary_unconfirmed
     coordinator_wakeup_already_active duplicate_run duplicate_wakeup edited_summary edited_supplement

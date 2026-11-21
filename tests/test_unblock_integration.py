@@ -6,7 +6,7 @@ import unittest
 from contextlib import redirect_stdout
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from uuid import UUID
 
 from unblock.__main__ import main, registrations, run_case, scope_key
@@ -32,7 +32,8 @@ class CheckpointLoopTest(unittest.TestCase):
         self.disconnect = False
 
     def poll(self):
-        return {"snapshot": copy.deepcopy(self.snapshot), "hints": self.hints, "pending": self.pending}
+        return {"snapshot": copy.deepcopy(self.snapshot), "hints": self.hints, "pending": self.pending,
+                "pickup_source_verified": True, "issue_closed": False}
 
     def notify(self, marker):
         self.sent.append(marker)
@@ -114,6 +115,45 @@ class CheckpointLoopTest(unittest.TestCase):
         self.assertEqual(self.tick(True)["notification"]["status"], "confirmed")
         self.assertEqual(len(self.sent), 1)
 
+    def test_unconfirmed_activity_defers_first_send_but_still_reconciles_an_existing_marker(self):
+        self.clock = lambda: datetime.fromisoformat(self.snapshot["due_at"])
+        for activity in ("unknown", "in_flight", "artifact_unconfirmed"):
+            with self.subTest(activity=activity):
+                self.snapshot["activity"] = activity
+                self.hints = [] if activity == "unknown" else ["original-job:version:3"]
+                preview = self.tick()
+                self.assertEqual(preview["notification"], "deferred")
+                self.assertEqual(self.tick(True)["hold_reason"], "issue_activity_unconfirmed")
+                self.assertEqual(self.sent, [])
+                self.assertFalse(self.db.exists())
+
+        self.snapshot["activity"] = "clear"
+        clear = self.poll()
+        changed = {**clear, "snapshot": {**clear["snapshot"], "activity": "in_flight"}}
+        with patch.object(self, "poll", side_effect=[clear, changed]):
+            self.assertEqual(self.tick(True)["notification"], "changed")
+        self.assertFalse(self.db.exists())
+
+        self.disconnect = True
+        first = self.tick(True)["notification"]
+        self.assertEqual(first["status"], "unknown")
+        self.snapshot["activity"] = "in_flight"
+        self.disconnect = False
+        recovered = self.tick(True)["notification"]
+        self.assertEqual(recovered["status"], "confirmed")
+        self.assertEqual(recovered["marker"], first["marker"])
+        self.assertEqual(self.sent, [first["marker"]])
+
+    def test_unclassified_issue_status_cannot_claim_a_notification(self):
+        observed = {**self.poll(), "issue_closed": None}
+        with patch.object(self, "poll", return_value=observed):
+            row = self.tick(True)
+        self.assertEqual(row["notification"], "source_unconfirmed")
+        self.assertEqual(row["pending"], ["issue_status_unconfirmed"])
+        self.assertIsNone(row["issue_closed"])
+        self.assertEqual(self.sent, [])
+        self.assertFalse(self.db.exists())
+
     def test_catalog_cannot_override_project_identity(self):
         catalog = self.write_catalog()
         self.assertEqual(registrations(self.config), [self.reg])
@@ -183,4 +223,72 @@ class CheckpointLoopTest(unittest.TestCase):
                                    self.reg["issue_id"], "--snapshot", str(snapshot_file)]), 0)
         self.assertTrue(output.getvalue().startswith("/note unblock.v1 "))
         self.assertEqual(json.loads(output.getvalue().removeprefix("/note unblock.v1 ")), self.snapshot)
+        self.assertFalse(self.db.exists())
+
+    def test_a_single_issue_can_have_independently_registered_threads(self):
+        production = self.snapshot
+        production["target"]["id"] = "C001"
+        production["pickup"]["target_id"] = "C001"
+        production["evidence"]["technical"]["target_id"] = "C001"
+
+        review = copy.deepcopy(production)
+        review["thread_id"] = str(UUID(int=30))
+        review["checkpoint_id"] = "fixture-review-P089"
+        review["target"].update(id="P089", version="subtitle-v2", step="核对原音登记与字幕片段")
+        review.pop("contacts")
+        review["evidence"]["technical"].update(target_id="P089", target_version="subtitle-v2")
+        pickup = review["pickup"]
+        pickup.update(target_id="P089", target_version="subtitle-v2",
+                      checkpoint_id=review["checkpoint_id"], step=review["target"]["step"])
+        pickup["source_scope"]["thread_id"] = review["thread_id"]
+        review["execution"] = {**pickup, "ref": "fixture:p089-execution", "at": review["recorded_at"],
+                               "run_id": "fixture:run", "artifact_id": "fixture:artifact"}
+        review["acceptance"] = {**review["execution"], "ref": "fixture:p089-acceptance",
+                                "actor_id": self.reg["roles"]["acceptor"]["id"],
+                                "scope": "first_item", "result": "accepted"}
+
+        cases = [
+            {**{key: production[key] for key in ("issue_id", "thread_id", "checkpoint_id")},
+             "required_evidence": self.reg["required_evidence"]},
+            {**{key: review[key] for key in ("issue_id", "thread_id", "checkpoint_id")},
+             "required_evidence": ["technical"]},
+        ]
+        defaults = {key: value for key, value in self.reg.items() if key not in cases[0]}
+        self.config.write_text(json.dumps({"projects": [{"defaults": defaults, "cases": cases}]}))
+
+        snapshots = {row["thread_id"]: row for row in (production, review)}
+
+        def open_original_thread(reg, **_kwargs):
+            return Mock(poll=Mock(return_value={
+                "snapshot": snapshots[reg["thread_id"]], "hints": [], "pending": [],
+                "pickup_source_verified": True, "issue_closed": False,
+            }))
+
+        config_args = ["--config", str(self.config), "--issue", self.reg["issue_id"]]
+        with patch("unblock.native.NativeSource", side_effect=open_original_thread) as source, \
+                patch("unblock.__main__.datetime", wraps=datetime) as wall, redirect_stdout(io.StringIO()) as overview:
+            wall.now.return_value = self.clock()
+            self.assertEqual(main(["tick", *config_args]), 0)
+            migration, postproduction = [row["assessment"] for row in json.loads(overview.getvalue())["cases"]]
+            self.assertEqual(migration["target"]["id"], "C001")
+            self.assertEqual(migration["state"], "blocked")
+            self.assertEqual(migration["evidence"]["isolation"]["status"], "missing")
+            self.assertIsNone(migration["accepted_scope"])
+            self.assertEqual(postproduction["target"]["id"], "P089")
+            self.assertEqual(postproduction["state"], "recovered")
+            self.assertEqual(postproduction["accepted_scope"], "first_item")
+            self.assertFalse(postproduction["issue_accepted"])
+            with self.assertRaisesRegex(ValueError, "--thread"):
+                main(["tick", *config_args, "--apply", "--db", str(self.db)])
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                main(["tick", "--config", str(self.config), "--issue", "", "--apply",
+                      "--db", str(self.db)])
+            self.assertEqual(source.call_count, 2)
+            with redirect_stdout(io.StringIO()) as filtered:
+                self.assertEqual(main(["tick", *config_args, "--thread", review["thread_id"]]), 0)
+            self.assertEqual(json.loads(filtered.getvalue())["cases"][0]["scope"][-1], review["thread_id"])
+            with redirect_stdout(io.StringIO()) as patrol:
+                self.assertEqual(main(["g8", *config_args]), 0)
+            self.assertEqual([row["assessment"]["target"]["id"] for row in json.loads(patrol.getvalue())["cases"]],
+                             ["C001"])
         self.assertFalse(self.db.exists())
