@@ -4,6 +4,8 @@
 
 **快速索引**　[找 Mike](#工作区协调员-mike) · [按岗位选](#从角色要交付的结果开始) · [两端版本与实测](#两端实际登记的运行时) · [按架构问题查](#架构比较) · [速度与 Token](#速度与-token) · [实际推理档位](#实际推理档位) · [推荐分工](#推荐分工与换选条件) · [创建与验收](#建一个可以验收的角色) · [Kimi 与 OMP 独立决策身份](#win-work-的-kimi-与-omp-独立决策身份) · [DSH 与 Hermes 独立决策身份](#win-work-的-dsh-与-hermes-独立决策身份) · [按来源查](#资料索引) · [新增或升级](#新增升级或停用时怎样更新本文)
 
+**按岗位建角**　[角色库：职责、可复用岗位与首单验收](role-library.md)
+
 **按 Harness 查**　[Codex](#codex) · [Kimi](#kimi) · [OMP / Oh My Pi](#omp) · [DSH / DeepSeek Harness](#dsh) · [Hermes](#hermes)
 
 ## 工作区协调员 Mike
@@ -34,6 +36,8 @@ Decision Service 部署在外网 Vultr VPS，由 `decision-service.service` 监�
 | 辩证复核专员（win-work DSH） | `workspace_dialectic` | 已在原卡对齐同一简报中的正反证据，给出中断恢复的验收条件。独立双线复核另需两个各自形成首稿的上下文。[CLOU-27](http://10.207.56.3:3000/cloud-work/issues/CLOU-27) |
 
 产物处理和辩证复核沿用 DSH 的 `multica` profile 和 `local-gpt/gpt-6.2-sol`。知识管理员按公子指定原位改绑 win-work Hermes，模型随运行时配置。岗位指令限定在当次工作区内操作；Hermes 的 `local` 终端继承 Windows 账号的文件权限，宿主级强制隔离待验。[Hermes 工作目录与后端](https://github.com/NousResearch/hermes-agent/blob/09ded63/website/docs/user-guide/profiles.md#L239-L244) · [项目记忆接入](win-work-hindsight.md)
+
+**知识管理员的案例复用验收。** CLOU-40 的历史试跑覆盖按症状召回、按文档 ID 读回、原卡反馈以及已有案例去重。校验正文时直接取结构化响应的完整 `original_text` 并按 UTF-8 原样计算 SHA-256；预览截断或转录副本须标明边界。[知识管理员原卡反馈](http://10.207.56.3:3000/cloud-work/issues/01a1f9b0-ab24-7cf1-b748-8b5dc2c4e966#comment-01a201a7-3151-7a3b-b46b-6ba834065ce1) · [校验规则](../skills/workspace-coordination/SKILL.md#阻塞案例的检索沉淀与反馈)
 
 **知识管理员的启动入口。** 2026-11-21 起，专属 profile 经 `KnowledgeHermes.exe` 启动原受管 Hermes，详见[独立决策身份](#hermes-的任务私有配置)。此前 CLOU-25 使用 Hermes 0.23.3，由岗位专属 Multica 运行时直接调用 `%LOCALAPPDATA%\hermes\bin\hermes.exe acp`。旧 checkout 的 `venv\Scripts\hermes.exe` 曾连续两次在初始化时无法导入 `ArgsKwargs`；同机受管启动器通过 ACP 握手。原卡新 Run `01a1f85f-a882-7805-8132-408f187f61c5` 核对了 CLOU-16、CLOU-23，调用 `mcp__hindsight__get_document` 按稳定 ID 取回原文并回报原卡，独立读回的 SHA-256 一致。此次使用显式读取；新会话的派生配置将外部 `memory.provider` 留空，首轮自动注入只在旧版本验收中得到验证。[换绑验收 CLOU-25](http://10.207.56.3:3000/cloud-work/issues/CLOU-25)
 
@@ -308,3 +312,4 @@ multica runtime profile update 5e3fe5af-f04c-4238-be35-a2e1f8cd0aae --command-na
 | 2026-11-21 | 将按需决策纳入现有和新增角色的 prompt 配置与新会话验收，补入服务端项目授权读回。 |
 | 2026-11-21 | 据 CLOU-43～45 补录 DSH、Hermes 独立决策身份的配置、升级复验、回退与岗位验收。 |
 | 2026-11-21 | 补入 CLOU-46～48 的 Kimi、OMP 角色独立身份实测、研究员 stdio 修复与两种反馈覆盖问题。 |
+| 2026-11-22 | 新增角色库入口和 CLOU-40 知识管理员案例复用验收，补明正文摘要的核验方法。 |
