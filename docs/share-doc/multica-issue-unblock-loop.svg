@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
   <title id="title">原卡上的解阻闭环</title>
-  <desc id="desc">主责核接手与在途后分支办理：能做的直接交付，由指定人按范围验收；缺授权的登记具名决定人，到期先对账。证据到位回原主责办理，仍无解交协调员和 G8 取得处置。</desc>
+  <desc id="desc">已有主责直接续办，确需交办时沿原卡一次交给一名主责。获准且独立的工作可并行，共用写目标时串行。缺许可只交具体动作，需独立复审只交待审版本与标准。到期先对账，换任只交剩余工作。</desc>
   <defs>
     <marker id="main" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M1 1 L9 5 L1 9 Z" fill="#285b99"/>
@@ -26,32 +26,32 @@
   <text x="58" y="77" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="48" font-weight="720" fill="#182d46" data-max="1160">原卡上的解阻闭环</text>
   <text x="1542" y="59" text-anchor="end" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="600" fill="#4c6275" data-max="320">解阻详图   /   02</text>
   <text x="1542" y="88" text-anchor="end" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="500" fill="#4c6275" data-max="240">2026.11.23</text>
-  <text x="60" y="125" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="24" font-weight="420" fill="#4c6275" data-max="1450">以受影响的动作、目标和版本为单位办理。一个支路等待授权，其他已就绪的工作仍可交付。</text>
+  <text x="60" y="125" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="24" font-weight="420" fill="#4c6275" data-max="1450">已有主责直接续办，确需交办时沿原卡一次交给一名主责。一个支路等许可，其他就绪支路继续。</text>
   <path d="M60 151 H1540" fill="none" stroke="#d1dbe2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
   <rect x="60" y="267" width="300" height="154" rx="15" fill="#ffffff" stroke="#d1dbe2" stroke-width="1.4"/>
   <rect x="61.5" y="284" width="5" height="120" rx="2" fill="#285b99" stroke="none" stroke-width="1.4"/>
-  <text x="82" y="297" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="600" fill="#285b99" data-max="258">入口 · 现任项目负责人</text>
-  <text x="82" y="333" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="29" font-weight="700" fill="#182d46" data-max="258">先核原卡和在途</text>
-  <text x="82" y="366" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="258">已有主责沿原动作续办</text>
-  <text x="82" y="394" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="258">无人接手时落实给负责人</text>
+  <text x="82" y="297" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="600" fill="#285b99" data-max="258">入口 · 先读原卡和在途记录</text>
+  <text x="82" y="333" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="29" font-weight="700" fill="#182d46" data-max="258">先找已有主责</text>
+  <text x="82" y="366" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="258">已有主责在授权内连续办理</text>
+  <text x="82" y="394" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="258">无主责时默认交项目负责人</text>
   <rect x="465" y="185" width="445" height="146" rx="15" fill="#ffffff" stroke="#d1dbe2" stroke-width="1.4"/>
   <rect x="466.5" y="202" width="5" height="112" rx="2" fill="#167261" stroke="none" stroke-width="1.4"/>
   <text x="487" y="215" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="600" fill="#167261" data-max="403">支路 A · 项目负责人 / 执行人</text>
-  <text x="487" y="251" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="29" font-weight="700" fill="#182d46" data-max="403">能做的直接办</text>
-  <text x="487" y="284" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="403">明确且已获准时直接做</text>
-  <text x="487" y="312" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="403">独立工作可并行，父 Run 核收结果</text>
+  <text x="487" y="251" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="29" font-weight="700" fill="#182d46" data-max="403">独立检查可并行</text>
+  <text x="487" y="284" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="403">已获准、无先后依赖且能分别核验</text>
+  <text x="487" y="312" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="403">主责收齐结果，共用写入目标时串行</text>
   <rect x="1090" y="185" width="450" height="146" rx="15" fill="#ffffff" stroke="#d1dbe2" stroke-width="1.4"/>
   <rect x="1091.5" y="202" width="5" height="112" rx="2" fill="#167261" stroke="none" stroke-width="1.4"/>
-  <text x="1112" y="215" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="600" fill="#167261" data-max="408">出口 · 原任务指定验收人</text>
+  <text x="1112" y="215" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="600" fill="#167261" data-max="408">出口 · 独立审查员（按需）／指定验收人</text>
   <text x="1112" y="251" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="29" font-weight="700" fill="#182d46" data-max="408">按范围验收并回报</text>
-  <text x="1112" y="284" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="408">核实际产物、版本和原验收条件</text>
-  <text x="1112" y="312" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="408">只签认本次范围，原卡记录结论</text>
+  <text x="1112" y="284" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="408">需独立复审，只交待审版本与标准</text>
+  <text x="1112" y="312" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="408">指定验收人核产物并签认范围</text>
   <rect x="465" y="428" width="445" height="146" rx="15" fill="#ffffff" stroke="#d1dbe2" stroke-width="1.4"/>
   <rect x="466.5" y="445" width="5" height="112" rx="2" fill="#99540f" stroke="none" stroke-width="1.4"/>
   <text x="487" y="458" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="600" fill="#99540f" data-max="403">支路 B · 负责人追踪</text>
-  <text x="487" y="494" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="29" font-weight="700" fill="#182d46" data-max="403">把缺口落实到人</text>
-  <text x="487" y="527" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="403">说清哪一步缺什么、谁能决定</text>
-  <text x="487" y="555" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="403">约定复查时间或恢复触发条件</text>
+  <text x="487" y="494" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="29" font-weight="700" fill="#182d46" data-max="403">缺许可只问有权人</text>
+  <text x="487" y="527" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="403">请其决定具体动作、目标与版本</text>
+  <text x="487" y="555" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="403">约定何时复查、收到答复后谁续办</text>
   <rect x="1090" y="428" width="450" height="146" rx="15" fill="#ffffff" stroke="#d1dbe2" stroke-width="1.4"/>
   <rect x="1091.5" y="445" width="5" height="112" rx="2" fill="#99540f" stroke="none" stroke-width="1.4"/>
   <text x="1112" y="458" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="600" fill="#99540f" data-max="408">跨人协调 · 工作区协调员 / G8</text>
@@ -80,7 +80,7 @@
   <text x="85" y="744" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="24" font-weight="640" fill="#182d46" data-max="451">待接手</text>
   <text x="85" y="783" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="420" fill="#4c6275" data-max="452">查本次具名回执、目标版本和在途。</text>
   <text x="564" y="744" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="24" font-weight="640" fill="#182d46" data-max="451">已接手但逾期</text>
-  <text x="564" y="783" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="420" fill="#4c6275" data-max="452">核新进展，落实下一动作、责任人和复查点。</text>
+  <text x="564" y="783" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="420" fill="#4c6275" data-max="452">先核原请求、答复和在途，再定下一步。</text>
   <text x="1056" y="744" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="24" font-weight="640" fill="#182d46" data-max="451">已交付但缺验收证据</text>
   <text x="1056" y="783" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="420" fill="#4c6275" data-max="452">补原件或回执，只返工受影响部分。</text>
   <path d="M60 834 H1540" fill="none" stroke="#d1dbe2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
