@@ -6,7 +6,7 @@
 
 **按岗位建角**　[角色库：职责、可复用岗位与首单验收](role-library.md)
 
-**按 Harness 查**　[Codex](#codex) · [Kimi](#kimi) · [OMP / Oh My Pi](#omp) · [DSH / DeepSeek Harness](#dsh) · [Hermes](#hermes)
+**按 Harness 查**　[Codex](#codex) · [Kimi](#kimi) · [OMP / Oh My Pi](#omp) · [DSH / DeepSeek Harness](#dsh) · [Hermes](#hermes) · [win-work 原生子智能体配置与验收](#win-work-同一-run-内的原生子智能体)
 
 ## 工作区协调员 Mike
 
@@ -195,6 +195,21 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 
 win-work 的 Kimi 2.7.2 会话可在任务目录 `.kimi/skills/<名称>/SKILL.md` 读取 Multica 挂载的岗位 Skill。研究员和工程师都从这里读到了各自的三项正文；这些名称未列入它们的原生 `Skill` 菜单。共享记忆位于 `~/.kimi-code/skills/hindsight-memory`。配置新角色时可分别验收任务挂载和宿主入口。[研究员回执](http://10.207.56.3:3000/cloud-work/issues/CLOU-30) · [工程师回执](http://10.207.56.3:3000/cloud-work/issues/CLOU-29)
 
+## win-work 同一 Run 内的原生子智能体
+
+2026-11-23 在 win-work（Multica daemon 0.11.1）验证了四个 harness。新角色需要临时分工时，绑定对应的 win-work runtime，启用岗位所需工具，沿用该角色的工作区权限。父角色负责把每个子任务的结果带回本次 Run。可在岗位指令中写：「按子任务名称或 ID 核对收到的结果，收齐后汇总。超时或缺项时，说明哪一项待回。」单步任务由角色直接完成即可。
+
+| Harness | 新角色怎么配、怎么收结果 | 实测原件（北京时间） |
+|---|---|---|
+| OMP 19.0.1 | 绑定 win-work OMP。现有配置提供原生 `task` 和 `wait`。批量调用的 `context` 要写实际上下文，空值会在启动前被拒绝。异步派发后按返回的作业 ID 调用 `wait`，读取完成状态和输出。 | 运维工程师的 `OmpProbe23` 经 `wait` 交回 `OMP-CHECK=714`，父 Run 于 09:39:38 完成。[验收会话](http://10.207.56.3:3000/cloud-work/chat?session=01a2060e-a28c-7809-b24f-259328a22381) |
+| DSH 0.2.2-rc.3 | 绑定 win-work DeepSeek Harness，沿用 `dsh --profile multica --stdio`。现有 profile 暴露 `subagent`、`wait_agent`。给每个子任务起不同名称，等待各自的完成消息；一次等待返回可能只收到一份结果。 | 凡人项目负责人在 `fanren-work` 的隔离会话启动 `defer-alpha` 和 `defer-beta`。父会话的 `agent/inbox/spliced` 第 28、34 条先后收到 beta、alpha 的原文，第 42 条汇总两份结果。父 Run 于 09:47:49 完成。[负责人双子任务验收](http://10.207.56.3:3000/cloud-work/chat?session=01a20615-de33-7bbd-a767-79ad217bb956) |
+| Kimi 2.7.2 | 绑定 win-work Kimi，沿用 `kimi acp`。同一 Run 需要收回结果时，调用原生 `Agent` 并设 `run_in_background=false`。按调用 ID 配对工具请求与响应，核对子智能体 ID、`completed` 和返回内容。 | 软件实现工程师调用 `explore` 子智能体 `agent-0`，工具返回 `KIMI-NATIVE-CHECK=146`，父 Run 于 09:39:15 回传并完成。[验收会话](http://10.207.56.3:3000/cloud-work/chat?session=01a2060e-24cf-71ce-926b-ceae7c4d68d9) |
+| Hermes 0.23.3 | 绑定 win-work Hermes，在**角色环境变量**中增量加入 `HERMES_MULTICA_DELEGATION_MODE=inline`，保留原有变量，再开新会话。该变量由 win-work 的宿主配置读取。Hermes 的 `config.yaml` 已将原生 `delegation.gateway_mode` 配为 `"${HERMES_MULTICA_DELEGATION_MODE}"`，供 Multica 派生会话配置。父角色用 `delegate_task`，直接从本次工具响应读取子结果。 | 知识管理员首测只收到 `dispatched/background`，父 Run 随即结束。启用 inline 后，新 Run 的 `delegate_task` 返回子任务 `completed` 和 `JADE-223`，父角色原样回传，09:47:34 完成。[首测](http://10.207.56.3:3000/cloud-work/chat?session=01a2060e-43c2-743f-99c3-9cfa9813f548) · [通过的复验](http://10.207.56.3:3000/cloud-work/chat?session=01a20615-735f-7d96-91f3-64c09e9c632f) |
+
+**新角色首验或升级复验。** 用目标角色在所属项目开隔离聊天，给每个子任务一份可独立核对的输入与输出标记。读回项目、实际角色、runtime 和父 Run ID，以 `multica issue run-messages <父Run-ID> --output json` 查看工具轨迹。按子名、作业 ID 或调用 ID 逐项对应**派发、子结果、父侧收到的内容**，再核父回复覆盖全部预期项且 Run 为 `completed`。工具只返回启动回执、等待超时，或父 Run 已结束但缺少任一份结果时，该项记为待核。DSH 的 `timedOut:false` 只说明等待返回；工具轨迹未展示子正文时，可核对该父会话原生收件事件与对应子会话的最终输出。
+
+凡人负责人的双子用例验证了乱序收齐，其余三项各验一个子智能体。以上结果覆盖当次绑定和明确调用，跨 Run 后台续跑、取消恢复及最大并发仍待专项验证。OMP、DSH、Kimi 直接复用已有配置，只有 Hermes 知识管理员新增了角色级 inline 设置。四项均沿用运行中的 daemon。Hindsight bank `multica-4-dot` 可按文档 ID `multica-win-work-native-subagents-20261123` 查验收记录。
+
 ## win-work 的 Kimi 与 OMP 独立决策身份
 
 **决策 MCP 优先级：低（研究分析师、运维工程师、Multica 系统管理员）。** 三个岗位优先交付本职任务。已有依据和明确步骤时直接执行；职责内有多个可行方案，且选择会明显影响交付或风险时，才按需调用。涉及项目方向或跨团队资源取舍时，沿原卡把证据和建议交给项目负责人或工作区协调员。后续适配和专项复验优先保障负责人、协调员；这三个岗位遇到实际任务受阻时再跟进。
@@ -313,3 +328,4 @@ multica runtime profile update 5e3fe5af-f04c-4238-be35-a2e1f8cd0aae --command-na
 | 2026-11-21 | 据 CLOU-43～45 补录 DSH、Hermes 独立决策身份的配置、升级复验、回退与岗位验收。 |
 | 2026-11-21 | 补入 CLOU-46～48 的 Kimi、OMP 角色独立身份实测、研究员 stdio 修复与两种反馈覆盖问题。 |
 | 2026-11-22 | 新增角色库入口和 CLOU-40 知识管理员案例复用验收，补明正文摘要的核验方法。 |
+| 2026-11-23 | 补入 win-work 四种原生子智能体的建角配置、父 Run 收齐结果的验收方法及隔离会话回执。 |
