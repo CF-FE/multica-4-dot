@@ -6,6 +6,7 @@
 
 | 文档 | 内容 |
 |---|---|
+| [项目交付与解阻方案图解](docs/share-doc/README.md) | 一张总图看架构与交付全程，一张详图看遇阻后由谁续办，附隔离验收证据。 |
 | [Multica 角色库](docs/role-library.md) | 工作区负责人按交付物选用岗位模板，核对已有角色、职责和首单验收。 |
 | [Multica Backend MCP 部署、配置与升级手册](deployment/multica-backend/README.md) | 首次部署、查看现网、改后端地址、新增实例、换 PAT、MCP 换版回退，以及跟进腾讯云 Multica 升级。 |
 | [Multica Backend MCP 决策与任务](docs/backend-integration.md) | Dot 直连的五项 ADR、并行任务、版本跟踪及能力验收。 |

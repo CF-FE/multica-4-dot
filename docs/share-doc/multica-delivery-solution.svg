@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Multica 项目交付与解阻总图</title>
+  <desc id="desc">同一项目原卡连接委托、执行、独立复审及验收。支路遇阻由项目负责人处置，获准后回到原执行步骤。图中标出云端、Vultr、腾讯云与工作机的职责。</desc>
+  <defs>
+    <marker id="main" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L9 5 L1 9 Z" fill="#285b99"/>
+    </marker>
+  </defs>
+  <defs>
+    <marker id="back" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L9 5 L1 9 Z" fill="#167261"/>
+    </marker>
+  </defs>
+  <defs>
+    <marker id="risk" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L9 5 L1 9 Z" fill="#99540f"/>
+    </marker>
+  </defs>
+  <defs>
+    <marker id="muted" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L9 5 L1 9 Z" fill="#4c6275"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1600" height="900" rx="0" fill="#f5f7fa" stroke="none" stroke-width="1.4"/>
+  <text x="58" y="77" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="48" font-weight="720" fill="#182d46" data-max="1160">Multica 项目交付与解阻</text>
+  <text x="1542" y="59" text-anchor="end" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="600" fill="#4c6275" data-max="320">方案总图   /   01</text>
+  <text x="1542" y="88" text-anchor="end" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="500" fill="#4c6275" data-max="240">2026.11.23</text>
+  <text x="60" y="125" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="24" font-weight="420" fill="#4c6275" data-max="1450">一张项目原卡贯穿交办、执行和验收。遇到阻塞，只把受影响的那一步带入解阻流程。</text>
+  <path d="M60 151 H1540" fill="none" stroke="#d1dbe2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="60" y="190" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="600" fill="#285b99">任务主线</text>
+  <path d="M650 227 V184 H1377 V227" fill="none" stroke="#285b99" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#main)"/>
+  <rect x="855" y="167" width="350" height="31" rx="0" fill="#f5f7fa" stroke="none" stroke-width="1.4"/>
+  <text x="1030" y="190" text-anchor="middle" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="550" fill="#285b99" data-max="345">仅需回执时，由发起者直接验收</text>
+  <path d="M385 301 H443" fill="none" stroke="#285b99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#main)"/>
+  <path d="M770 301 H828" fill="none" stroke="#285b99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#main)"/>
+  <path d="M1155 301 H1213" fill="none" stroke="#285b99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#main)"/>
+  <rect x="60" y="229" width="325" height="147" rx="15" fill="#ffffff" stroke="#d1dbe2" stroke-width="1.4"/>
+  <rect x="61.5" y="246" width="5" height="113" rx="2" fill="#285b99" stroke="none" stroke-width="1.4"/>
+  <text x="82" y="259" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="600" fill="#285b99" data-max="283">所属项目 · 协调员 / 现有主责</text>
+  <text x="82" y="295" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="29" font-weight="700" fill="#182d46" data-max="283">沿原卡接单</text>
+  <text x="82" y="328" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="283">定目标、责任人、验收条件</text>
+  <text x="82" y="356" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="283">执行人签收当前动作与版本</text>
+  <rect x="445" y="229" width="325" height="147" rx="15" fill="#ffffff" stroke="#d1dbe2" stroke-width="1.4"/>
+  <rect x="446.5" y="246" width="5" height="113" rx="2" fill="#285b99" stroke="none" stroke-width="1.4"/>
+  <text x="467" y="259" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="600" fill="#285b99" data-max="283">工作机 Daemon · 负责人 / 执行人</text>
+  <text x="467" y="295" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="29" font-weight="700" fill="#182d46" data-max="283">在授权内执行</text>
+  <text x="467" y="328" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="283">已获准的工作直接办理</text>
+  <text x="467" y="356" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="283">交付可读回的产物与证据</text>
+  <rect x="830" y="229" width="325" height="147" rx="15" fill="#ffffff" stroke="#d1dbe2" stroke-width="1.4"/>
+  <rect x="831.5" y="246" width="5" height="113" rx="2" fill="#285b99" stroke="none" stroke-width="1.4"/>
+  <text x="852" y="259" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="600" fill="#285b99" data-max="283">按项目要求 · 独立审查员</text>
+  <text x="852" y="295" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="29" font-weight="700" fill="#182d46" data-max="283">核对本次交付</text>
+  <text x="852" y="328" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="283">按候选版本检查产物</text>
+  <text x="852" y="356" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="283">需要修正时写清缺口</text>
+  <rect x="1215" y="229" width="325" height="147" rx="15" fill="#ffffff" stroke="#d1dbe2" stroke-width="1.4"/>
+  <rect x="1216.5" y="246" width="5" height="113" rx="2" fill="#167261" stroke="none" stroke-width="1.4"/>
+  <text x="1237" y="259" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="600" fill="#167261" data-max="283">原任务 · 指定验收人</text>
+  <text x="1237" y="295" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="29" font-weight="700" fill="#182d46" data-max="283">签认范围并回报</text>
+  <text x="1237" y="328" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="283">通过的范围记在原卡</text>
+  <text x="1237" y="356" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="420" fill="#4c6275" data-max="283">跨端委托按约定回原 job</text>
+  <path d="M997 377 V402 H657 V379" fill="none" stroke="#285b99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#main)"/>
+  <rect x="722" y="387" width="211" height="28" rx="0" fill="#f5f7fa" stroke="none" stroke-width="1.4"/>
+  <text x="827" y="407" text-anchor="middle" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="18" font-weight="510" fill="#285b99" data-max="204">退原执行人修正并复审</text>
+  <path d="M489 377 V457" fill="none" stroke="#99540f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#risk)"/>
+  <path d="M574 458 V379" fill="none" stroke="#167261" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#back)"/>
+  <text x="479" y="436" text-anchor="end" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="18" font-weight="600" fill="#99540f" data-max="110">发现卡点</text>
+  <text x="584" y="436" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="18" font-weight="600" fill="#167261" data-max="130">恢复后续办</text>
+  <rect x="60" y="461" width="1480" height="115" rx="14" fill="#fff2dd" stroke="#e2c8a1" stroke-width="1.4"/>
+  <text x="84" y="498" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="25" font-weight="680" fill="#99540f" data-max="180">解阻支路</text>
+  <text x="84" y="536" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="18" font-weight="450" fill="#4c6275" data-max="200">沿同一张原卡追踪</text>
+  <path d="M302 479 V556" fill="none" stroke="#d1dbe2" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="327" y="505" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="26" font-weight="680" fill="#182d46" data-max="360">负责人分开办理</text>
+  <text x="327" y="543" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="450" fill="#4c6275" data-max="365">先交能做的部分</text>
+  <text x="718" y="505" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="26" font-weight="680" fill="#182d46" data-max="360">有权人处理缺口</text>
+  <text x="718" y="543" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="450" fill="#4c6275" data-max="365">协调员找对口，G8 兜底</text>
+  <text x="1141" y="505" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="26" font-weight="680" fill="#182d46" data-max="360">按证据恢复</text>
+  <text x="1141" y="543" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="20" font-weight="450" fill="#4c6275" data-max="365">只续办具备条件的动作</text>
+  <path d="M630 515 H681" fill="none" stroke="#99540f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#risk)"/>
+  <path d="M1051 515 H1103" fill="none" stroke="#99540f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#risk)"/>
+  <text x="60" y="632" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="28" font-weight="680" fill="#182d46" data-max="840">这些步骤由哪些系统承载</text>
+  <text x="1540" y="628" text-anchor="end" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="450" fill="#4c6275" data-max="570">云端委托经网关入卡；项目内可直接进入 Multica。</text>
+  <rect x="60" y="655" width="1480" height="163" rx="14" fill="#ffffff" stroke="#d1dbe2" stroke-width="1.4"/>
+  <path d="M421 676 V796" fill="none" stroke="#d1dbe2" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M795 676 V796" fill="none" stroke="#d1dbe2" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M1163 676 V796" fill="none" stroke="#d1dbe2" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="82" y="700" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="24" font-weight="650" fill="#285b99" data-max="330">云端 Dot（G8）</text>
+  <text x="82" y="741" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="410" fill="#4c6275" data-max="333">交办目标，巡查到期原卡</text>
+  <text x="82" y="774" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="410" fill="#4c6275" data-max="333">跨项目找资源，需授权时找有权人</text>
+  <text x="445" y="700" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="24" font-weight="650" fill="#285b99" data-max="330">Vultr 网关</text>
+  <text x="445" y="741" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="410" fill="#4c6275" data-max="333">信箱与 Multica MCP 接入</text>
+  <text x="445" y="774" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="410" fill="#4c6275" data-max="333">Decision MCP 比较获准方案</text>
+  <text x="820" y="700" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="24" font-weight="650" fill="#167261" data-max="330">腾讯云 Multica</text>
+  <text x="820" y="741" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="410" fill="#4c6275" data-max="333">项目看板、原 Issue 与 Run</text>
+  <text x="820" y="774" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="410" fill="#4c6275" data-max="333">unblock 提醒已登记卡的协调员</text>
+  <text x="1185" y="700" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="24" font-weight="650" fill="#167261" data-max="330">win-work / mac-work</text>
+  <text x="1185" y="741" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="410" fill="#4c6275" data-max="333">Daemon 领单，角色执行或复审</text>
+  <text x="1185" y="774" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="19" font-weight="410" fill="#4c6275" data-max="333">Hindsight 项目记忆在 win-work</text>
+  <rect x="398" y="685" width="46" height="20" rx="0" fill="#ffffff" stroke="none" stroke-width="1.4"/>
+  <path d="M402 695 H436" fill="none" stroke="#4c6275" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#muted)"/>
+  <rect x="772" y="685" width="46" height="20" rx="0" fill="#ffffff" stroke="none" stroke-width="1.4"/>
+  <path d="M776 695 H810" fill="none" stroke="#4c6275" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#muted)"/>
+  <rect x="1140" y="685" width="46" height="20" rx="0" fill="#ffffff" stroke="none" stroke-width="1.4"/>
+  <path d="M1144 695 H1178" fill="none" stroke="#4c6275" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#muted)"/>
+  <path d="M60 845 H1540" fill="none" stroke="#d1dbe2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="60" y="879" text-anchor="start" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="18" font-weight="450" fill="#4c6275" data-max="1100">进度看原 Issue，执行看原 Run 与产物，业务结论看指定验收人的签认。</text>
+  <text x="1540" y="879" text-anchor="end" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="17" font-weight="550" fill="#4c6275" data-max="370">下一图展开解阻支路  →</text>
+</svg>
