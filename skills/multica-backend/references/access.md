@@ -1,6 +1,6 @@
-# Multica v0.11.0 认证、查询与操作
+# Multica 认证、查询与操作
 
-本页以已安装的 CLI v0.11.0 和同版服务端源码为基线。操作前以目标 CLI 的 `multica version`、相关 `--help` 及服务器部署版本核对兼容性。[固定源码提交](https://github.com/multica-ai/multica/commit/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8)
+REST 路由和服务端行为以腾讯云当前部署的 v0.11.0 为基线。mac-work CLI／Daemon v0.12.1 的适用范围和已验证差异见 [v0.12.1 CLI 差异与实测](cli-v0.12.1.md)。操作前核对目标 CLI 的 `multica version`、相关 `--help`、实际身份及服务端版本。[v0.11.0 固定源码](https://github.com/multica-ai/multica/commit/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8)
 
 ## 选择调用身份
 
@@ -28,6 +28,21 @@ multica --profile pilot --workspace-id "$WS_ID" runtime list --output json
 - `auth status` 可能在未登录或凭据过期时返回退出码 0。用 `GET /api/me` 或获准的目标 workspace 查询验证实际身份和范围。CLI 业务查询无需启动本机 Daemon。
 - 在 Run 内用 `"$MULTICA_CLI_PATH" ...`（POSIX / Git Bash）或 `& "$env:MULTICA_CLI_PATH" ...`（PowerShell），沿用已注入的 server、workspace 和 Run 身份，不另登 PAT profile。目标权限不足时，以实际拒绝说明交给获授权的操作者办理，保留最小回执。[Daemon 注入的运行指引](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/daemon/execenv/runtime_config_sections.go#L43-L58)
 - 经授权单独接入自托管实例时，先确认 API origin 和前端 origin。可在指定 profile 设置 `config set server_url` / `app_url`，交互执行 `multica --profile pilot login --token` 并在终端输入令牌。`setup self-host` 会配置地址、登录并启动 Daemon。其本机缺省为 API 8080、Web 3000，外部机器应使用已核准的实际地址。登录动作可启动或更新本机运行连接，先区分只读核验与新增接入。
+
+## Daemon 重启与原卡验证
+
+- 重启前用 `daemon status --output json` 核对目标 profile、Daemon ID、进程版本以及 `active_task_count`、`running_task_count`、`resource_wait_task_count`。按 Daemon ID 核对服务端运行时的在途 Run，覆盖关联工作区。等待目录的 Run 仍属在途。计数字段缺失时按服务端记录或本机日志补证。把最后一次空闲检查放在获准的 `daemon restart` 前。
+- 重启后用 `daemon status --output json` 核对 `cli_version`、新进程及工作区。用该工作区的 `runtime list --output json` 按同一 Daemon ID 核对原 runtime ID、`online` 和重启后的 `last_seen_at`。[Daemon 官方说明](https://multica.ai/docs/daemon-runtimes)
+- 有实际领单验收授权时，先确认已有验证卡、目标 Agent 绑定的 runtime ID 和卡上在途 Run。核对工作流和指派后发一条定向触发评论，沿用原卡状态与归属。可以让目标 Run 执行系统信息查询及对一次性字符串计算 SHA-256，由操作者独立比对输出。
+- 用 `issue runs <issue> --output json` 按 `trigger_comment_id` 找本次 Run，核对新增 Run 数量、目标 `runtime_id`、开始和终态。用 `issue run-messages <run> --issue <issue>` 核对工具执行及真实输出，用 `issue comment list <issue> --output json` 按 `parent_id`、评论作者和正文核对回件。CLOU-24 实测覆盖 mac-work v0.12.1 Daemon 在腾讯云 v0.11.0 上的领取、执行和原卡回传。
+
+只读任务的回传直接用内存文本，单行可用 `--content`，多行可由 stdin 传入。在评论触发的 Run 中，`TRIGGER_COMMENT_ID` 取该 Run 的原触发评论，`OBSERVED_RESULT` 取实际工具输出。经授权后，将静默回执直接传给原卡。
+
+```bash
+printf '/note\n\n%s\n' "$OBSERVED_RESULT" |
+  "$MULTICA_CLI_PATH" issue comment add "$ISSUE_ID" \
+    --parent "$TRIGGER_COMMENT_ID" --content-stdin --output json
+```
 
 ## 收件箱与会话唤醒
 
@@ -60,7 +75,7 @@ multica --profile pilot --workspace-id "$WS_ID" runtime list --output json
 - `workflow handoff set` 可按项目复制工作流后再设置 handler。`project workflow set --dry-run` 可先核状态迁移，`--map old=new` 在存在不兼容状态时显式映射。内置 handler 没有“原执行者”选项，记名退回须从候选 Run 的 `agent_id`、交付评论来源等核对原执行者，并在获授权时一次更新 assignee 与返工状态。`--back` 给步骤定义回退目的状态，不能代替对执行者的核验及必要改派。
 - `issue assign/status/update --no-start` 仍会修改业务对象。需要触发执行时，检查响应的 `run_outcome` 中的 `status` 和 `reason_code`，`target_id` 对应指派对象，指派给 Squad 时为 Squad ID。回执仅随原写入响应返回。v0.11.0 单条指派、状态及修改命令会把合并、延期或阻止等未启动原因写到 stderr，`issue batch update` 表格逐条显示原因。写入没有派发决策、调用者无权调用指派对象或服务端版本较旧时，响应可能省略 `run_outcome`。缺少回执时将派发结果记为待确认，在权限范围内查同一 Issue 的 Run 核对实际执行对象和状态，避免重复派发。[CLI 回执处理](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/cmd/multica/cmd_issue_run_outcome.go) · [服务端派发回执](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/issue_trigger.go#L101-L144)
 - `issue metadata set --type string` 可将结构化记录存为 JSON 文本，读回后解码与校验。原生 metadata 仅支持 string、number、bool，选用 CLI 推断时注意数字样式字符串与布尔值的区别。[metadata 校验](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/issue_metadata.go#L59-L77)
-- 用 `issue comment add --content-file <UTF-8文件>` 保留多行与附件引用。评论触发的 Run 按 `--parent <触发评论ID>` 回传。纯记录时用首个空白分隔 token `/note` 抑制智能体触发。普通评论可以按提及、线程及指派触发，分别核验保存评论与派发结果。`--steer <run>` 或 `--steer-active` 需要目标 Run 支持补充（`can_supplement`），`trigger_outcomes` 中的 `steered` 表示评论已绑定到目标 Run。读回该评论的 `supplements[]`，按 `task_id` 核对 `status`、`delivered_at` 和 `failure_reason`。绑定失败时可能走普通派发，应同时核查同一 Issue 是否产生后续 Run。[评论触发逻辑](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/comment.go#L1975-L2014) · [逐 Run 投递回执](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/task_supplement.go#L100-L146) · [绑定和回退](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/task_supplement.go#L223-L250)
+- 用 `issue comment add --content-stdin` 保留多行正文，已有文件可用 `--content-file <UTF-8文件>`。评论触发的 Run 按 `--parent <触发评论ID>` 回传。纯记录时用首个空白分隔 token `/note` 抑制智能体触发。普通评论可以按提及、线程及指派触发，分别核验保存评论与派发结果。`--steer <run>` 或 `--steer-active` 需要目标 Run 支持补充（`can_supplement`），`trigger_outcomes` 中的 `steered` 表示评论已绑定到目标 Run。读回该评论的 `supplements[]`，按 `task_id` 核对 `status`、`delivered_at` 和 `failure_reason`。绑定失败时可能走普通派发，应同时核查同一 Issue 是否产生后续 Run。[评论触发逻辑](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/comment.go#L1975-L2014) · [逐 Run 投递回执](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/task_supplement.go#L100-L146) · [绑定和回退](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/task_supplement.go#L223-L250)
 - `issue cancel-task <run> --issue <issue>` 用原 Run 对账。取消是执行控制，已有文件或外部动作须另行核验。`issue rerun-task <run> --issue <issue>` 创建新 Run，沿原执行智能体与触发来源并可能续用会话/目录。`--fresh` 请求新会话与目录。先核自动重试、原 Run 状态及同一 Issue、同一智能体和同一评论线程的待执行队列。重跑可能取消该线程尚未开始的待执行项。已有 `running` 或 `waiting_local_directory` 的同 Issue、同智能体 Run 会继续执行，重跑在其后排队。[服务端重跑排队](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/service/task.go#L6263-L6292)
 
 ## 管理员挂载技能

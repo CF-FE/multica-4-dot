@@ -21,6 +21,6 @@
 | [分阶段验证方案](docs/validation-plan.md) | 验收门槛、故障注入、回滚与待决事项 |
 | [win-work 项目记忆接入](docs/win-work-hindsight.md) | OMP、DSH 与 Hermes 的 Hindsight 项目绑定、召回、留存和验证 |
 | [腾讯云升级手册](docs/tencent-upgrade.md) | Compose 版本更新、数据库与附件备份、验收、旧镜像清理和迁移后的回退 |
-| [后端操作 Skill](skills/multica-backend/SKILL.md) | [认证与调用](skills/multica-backend/references/access.md) · [v0.11.0 CLI 命令](skills/multica-backend/references/cli-v0.11.0.md) · [v0.10.0 历史参考](skills/multica-backend/references/cli-v0.10.0.md) · [v0.9.0 历史参考](skills/multica-backend/references/cli-v0.9.0.md) |
+| [后端操作 Skill](skills/multica-backend/SKILL.md) | [认证与调用](skills/multica-backend/references/access.md) · [v0.12.1 CLI 差异与实测](skills/multica-backend/references/cli-v0.12.1.md) · [v0.11.0 CLI 总表](skills/multica-backend/references/cli-v0.11.0.md) · [v0.10.0 历史参考](skills/multica-backend/references/cli-v0.10.0.md) · [v0.9.0 历史参考](skills/multica-backend/references/cli-v0.9.0.md) |
 
 基础架构与后端接入保留 v0.1、v0.2 的历史提案。2026-11-20 已采纳的工作流、通知和跨端汇报决策见[实施核对](docs/workflow-reporting.md)。本库不存真实地址、任务内容、凭据或私有运行配置。
