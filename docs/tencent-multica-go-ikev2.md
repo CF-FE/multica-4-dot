@@ -297,6 +297,8 @@ vpn.update({
         "ServerCertificateIssuerCommonName": ca_name,
         "ServerCertificateCommonName": server,
         "EnablePFS": 0,
+        "OnDemandEnabled": 1,
+        "OnDemandRules": [{"Action": "Connect"}],
         "IKESecurityAssociationParameters": security_parameters(1440),
         "ChildSecurityAssociationParameters": security_parameters(60),
     },
@@ -305,13 +307,15 @@ vpn.update({
 profile = payload("Configuration", "profile", "Multica iPhone VPN")
 profile["PayloadOrganization"] = "Multica 私有部署"
 profile["PayloadContent"] = [ca, vpn]
-with (work / "Multica-iPhone-VPN.mobileconfig").open("wb") as output:
+with (work / "Multica-iPhone-VPN-OnDemand.mobileconfig").open("wb") as output:
     plistlib.dump(profile, output, sort_keys=False)
 PY
-plutil -lint "$VPN_WORK/Multica-iPhone-VPN.mobileconfig"
+plutil -lint "$VPN_WORK/Multica-iPhone-VPN-OnDemand.mobileconfig"
 ~~~
 
 用 AirDrop 把文件交给对应 iPhone，在「设置 → 通用 → VPN 与设备管理」安装，然后连接「Multica 私网」。描述文件含登录密码，按凭据管理。 [Apple IKEv2 参数](https://developer.apple.com/documentation/devicemanagement/vpn/ikev2-data.dictionary) · [strongSwan 描述文件示例](https://docs.strongswan.org/docs/6.0/interop/appleIkev2Profile.html)
+
+按需规则在 Wi-Fi 或蜂窝网络可用时允许 iOS 自动建立 VPN，隧道流量仍由服务端的 `/32` 选择器和端口规则限制。更新已有手机时，安装新版描述文件并检查「按需连接」已启用。长时间锁屏后解锁，直接打开 `/readyz`，再从服务端核对会话是否已恢复和双向计数是否增长。 [Apple 按需连接说明](https://developer.apple.com/documentation/networkextension/vpn-on-demand-rules)
 
 ## 验收与故障定位
 
@@ -333,6 +337,7 @@ sudo iptables -t nat -nvxL PREROUTING | awk '/multica-ikev2/'
 | 手机发起连接，服务端没看到握手 | 核对公网 IP、实例绑定的安全组和 UDP `500/4500` 监听 |
 | IKEv2 认证失败 | 查服务端证书有效期、SAN、iPhone 证书信任、双方账号与密码 |
 | IKEv2 已连接，页面打不开 | 手机先访问私网的 `/readyz`，结合 SA 计数和防火墙计数判断是否进了隧道。再核对两个 Docker 本地监听 |
+| 长时间锁屏后掉线 | 查看断开时间前后是否有 DPD 重传耗尽。手机解锁后确认新版描述文件能通过按需连接恢复隧道 |
 | 网页可访问，Multica Go 报错 | 分别核对 API、Web 字段和请求的账号，按需查 Multica 后端日志 |
 | VPN 管理工具连不上 | 查 `systemctl status strongswan.service` 和 `/run/charon.vici`。测试第二个守护进程时隔离运行目录和网络，避免占用生产管理套接字 |
 
