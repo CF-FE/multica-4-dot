@@ -18,7 +18,9 @@ G8 向各工作区协调员交办的统一约定见[职责与协作规范](../sk
 
 Decision Service 部署在外网 Vultr VPS，由 `decision-service.service` 监听回环端口 8768，对外服务路径为 `/decision-service/mcp`。2026-11-20 已核对生产单元运行状态和云端决定读回。[服务部署说明](https://github.com/CF-FE/decision-service/blob/main/docs/deployment.md)
 
-**找人入口**　进入 `cloud-work → 智能体 → Mike`。名片登记为“工作区协调员（Chief of Staff）”。跨智能体分工、项目任务派发、阻塞跟进及复审交接找 Mike。需留存的事项从所属项目的原 Issue 交办，验收人仍以原任务约定为准。按 `system_key=mika` 可识别内置岗位，显示名、绑定和可调用范围以工作区智能体详情为准。
+**找人入口**　进入 `cloud-work → 智能体 → Mike`。Mike 可在工作区内查现任负责人、按能力与权限找适配角色、汇总进度和转交工作。目标明确、归属清楚时可直达项目负责人。查人或查进度时直接答复，受托转交时沿原卡跟到接手；执行和验收由各自的责任人办理。需留存的事项从所属项目的原 Issue 交办，验收人仍以原任务约定为准。按 `system_key=mika` 可识别内置岗位，显示名、绑定和可调用范围以工作区智能体详情为准。
+
+Mike 当前挂载四项 Skill：`workspace-coordination` 管交接与回程，`multica-backend` 查原件和办理转交，`stakeholder-map` 辨明任职与对口人，`decision-service` 用于有实质取舍的协调决定。
 
 **当前绑定与证据**　2026-11-20 回读为 win-work OMP，模型配置 `cli-proxy-chat/gpt-6.2-sol`，允许工作区成员调用，并发 3。CLOU-4 的原卡及回合记录显示，Mike 汇总了多个运行时的结果，指出待补的验收证据，并按公子确认的标准回报结项。建议沿用这位协调员及其原有绑定。Hermes 的记忆与跨会话分诊、DSH 的流程工具可由专项岗位使用。
 
