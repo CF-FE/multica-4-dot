@@ -322,7 +322,7 @@ plutil -lint "$VPN_WORK/Multica-iPhone-VPN-OnDemand.mobileconfig"
 1. **VPN 会话**。用 `sudo swanctl --list-sas --ike multica-iphone` 查 `ESTABLISHED` 和 `INSTALLED`。服务端记录的隧道目标应为 `10.207.56.3/32`，手机应拿到 `10.88.248.0/29` 中的地址。双向计数为零时，让手机访问目标地址后重查。 [swanctl 状态说明](https://docs.strongswan.org/docs/6.0/swanctl/swanctlListSas.html)
 2. **手机蜂窝网络**。关 Wi-Fi 连 VPN，从手机打开 [API 健康检查](http://10.207.56.3:8080/readyz) 和 [Web 页面](http://10.207.56.3:3000/)。API 应返回 `status: ok`，Web 应能加载。重查隧道双向包数，再用 Multica Go 登录并选择 `cloud-work` 工作区。
 3. **访问范围**。服务器侧检查 VPN 的 INPUT、FORWARD 和 NAT 规则。2026-11-24 用独立 Linux 客户端验证了实际 IKEv2 握手、API 就绪、Web HTTP 200 和 TCP 22 拦截，真实 iPhone 后续完成了登录。
-4. **新实例登录**。若未配置邮件服务，按既有 Multica 自托管流程由运维查看对应账号的最新验证码，仅通过授权渠道交付该条验证码。 [Multica 自托管登录](https://multica.ai/docs/self-host-quickstart)
+4. **新实例登录**。若未配置邮件服务，由运维按[邮件验证码查询](#邮件验证码查询)查看对应账号的最新验证码。
 
 ~~~bash
 sudo swanctl --list-sas --ike multica-iphone
@@ -340,6 +340,104 @@ sudo iptables -t nat -nvxL PREROUTING | awk '/multica-ikev2/'
 | 长时间锁屏后掉线 | 查看断开时间前后是否有 DPD 重传耗尽。手机解锁后确认新版描述文件能通过按需连接恢复隧道 |
 | 网页可访问，Multica Go 报错 | 分别核对 API、Web 字段和请求的账号，按需查 Multica 后端日志 |
 | VPN 管理工具连不上 | 查 `systemctl status strongswan.service` 和 `/run/charon.vici`。测试第二个守护进程时隔离运行目录和网络，避免占用生产管理套接字 |
+
+## 邮件验证码查询
+
+当 Multica 未配置邮件服务、登录验证码由后端写入日志时，先在 Multica Go 的登录页请求验证码，再在腾讯云主机执行。当前脚本位于 `/opt/multica-verification-code.sh`，属主为 `root:root`，权限为 `0750`。 [Multica 自托管登录](https://multica.ai/docs/self-host-quickstart)
+
+~~~bash
+# 查脚本内配置的默认邮箱
+sudo /opt/multica-verification-code.sh
+
+# 指定邮箱，替换成这次登录时填入的地址
+sudo /opt/multica-verification-code.sh 'operator@example.org'
+~~~
+
+脚本按 Compose 项目 `multica` 和服务 `backend` 找到当前运行的容器，显示最近 10 分钟内匹配邮箱的最新日志验证码和北京时间。验证码按六位字符串输出，输入时保留开头的零。查不到时先核对邮箱和请求时间。已经配置邮件投递的实例从邮箱查收。
+
+### 重建查询脚本
+
+在腾讯云主机的私有暂存目录保存下面的模板为 `multica-verification-code.sh`，把 `DEFAULT_EMAIL` 改成运维账号使用的邮箱。脚本使用系统的 Bash、Python 3 和 Docker CLI。
+
+~~~bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec python3 - "$@" <<'PY'
+import argparse
+from datetime import datetime, timedelta, timezone
+import re
+import subprocess
+import sys
+
+DEFAULT_EMAIL = "operator@example.org"
+LOOKBACK_MINUTES = 10
+
+parser = argparse.ArgumentParser(
+    prog="/opt/multica-verification-code.sh",
+    description="查询腾讯云 Multica 后端近期记录的邮件验证码。",
+)
+parser.add_argument("email", nargs="?", default=DEFAULT_EMAIL, metavar="邮箱",
+                    help="指定邮箱，省略时查询当前默认账号")
+email = parser.parse_args().email.strip()
+if not re.fullmatch(r"[^@\s]+@[^@\s]+", email):
+    parser.error("请输入一个有效的邮箱地址")
+
+try:
+    containers = subprocess.run(
+        ["docker", "ps", "--filter", "label=com.docker.compose.project=multica",
+         "--filter", "label=com.docker.compose.service=backend",
+         "--format", "{{.ID}}"],
+        check=True, capture_output=True, text=True, timeout=10,
+    ).stdout.split()
+    if len(containers) != 1:
+        sys.exit(f"需要一个运行中的 Multica 后端容器，实际找到 {len(containers)} 个。")
+    log = subprocess.run(
+        ["docker", "logs", "--since", f"{LOOKBACK_MINUTES}m",
+         "--timestamps", containers[0]],
+        check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, errors="replace", timeout=20,
+    ).stdout
+except FileNotFoundError:
+    sys.exit("找不到 Docker 命令。请在腾讯云 Multica 主机上执行。")
+except subprocess.TimeoutExpired:
+    sys.exit("读取 Docker 状态或日志超时，请稍后重试。")
+except subprocess.CalledProcessError as error:
+    sys.exit(f"Docker 命令执行失败（退出码 {error.returncode}），请检查服务和权限。")
+
+pattern = re.compile(
+    r"^(\S+)\s+\[DEV\]\s+Verification code for "
+    + re.escape(email) + r":\s*([0-9]{6})\s*$",
+    re.IGNORECASE,
+)
+latest = None
+earliest = datetime.now(timezone.utc) - timedelta(minutes=LOOKBACK_MINUTES)
+for line in log.splitlines():
+    match = pattern.fullmatch(line)
+    if match is None:
+        continue
+    timestamp = datetime.fromisoformat(match.group(1))
+    if timestamp >= earliest and (latest is None or timestamp >= latest[0]):
+        latest = (timestamp, match.group(2))
+
+if latest is None:
+    sys.exit(f"最近 {LOOKBACK_MINUTES} 分钟没有找到 {email} 的日志验证码。请先在登录页请求验证码。")
+
+timestamp, code = latest
+beijing = timezone(timedelta(hours=8))
+print(f"{email}  {timestamp.astimezone(beijing):%Y-%m-%d %H:%M:%S}（北京时间）  {code}")
+PY
+~~~
+
+在暂存目录校验脚本语法并安装。覆盖已有脚本前，先备份当前文件。
+
+~~~bash
+bash -n ./multica-verification-code.sh &&
+  sudo install -o root -g root -m 0750 ./multica-verification-code.sh /opt/multica-verification-code.sh &&
+  sudo /opt/multica-verification-code.sh --help
+~~~
+
+在登录页为运维账号请求一次验证码后，用脚本核对输出的邮箱、时间和六位验证码。仅将该条验证码交给对应账号的授权使用者。
 
 ## 更新、撤销与回退
 
