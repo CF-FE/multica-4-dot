@@ -50,14 +50,16 @@ Mike 当前挂载四项 Skill：`workspace-coordination` 管交接与回程，`m
 | 要创建的角色 | 建议首选 | 什么情况下换选或补验 |
 |---|---|---|
 | 质量审查员 · `workspace_quality` | **win-work DSH**。该角色担任质量团队 leader。新审核按项目生效路由或原卡约定交办。使用 Multica 专用 profile 的 `workspace-write` 策略，实际模型和推理档位以角色详情及 Run 为准。 | 先核原件、候选 Run 和必验产物。审查者须独立于被审版本的制作。旧卡 CLOU-1 至 CLOU-3 的审查由当时的 mac-work Codex 执行。 |
-| 研究分析师 · `workspace_research` | **win-work Kimi**。技术调查按原件和版本取证。产品研究按材料调用 `competitor-analysis` 比较同一场景的竞品，`summarize-interview` 从访谈提取用户任务，`sentiment-analysis` 按样本分组整理正反反馈。[pm-skills v2.3.0](https://github.com/phuryn/pm-skills/tree/9af7bfd0bc47fdad43c2eaa7a43cd13918e7aaef) | 关键结论标来源、适用条件及可改变判断的证据。样本不足时保留实际数量和未知项。Windows Kimi 共享同一记忆入口。[研究员验收 CLOU-30](http://10.207.56.3:3000/cloud-work/issues/CLOU-30) |
-| 软件实现工程师 · `software_implementation` | **win-work Kimi**。实际故障用 `debugging-and-error-recovery`，有回归风险的行为变更用 `test-driven-development`，复杂改动用 `incremental-implementation` 分步交付。三项取自公子的 [my-agent-skills 6.4.0 固定版本](https://github.com/ghyghoo8/my-agent-skills/tree/af606510148d79141ab6b9643c60d39a44f06d87/plugins/my-agent-skills/skills)。项目记忆按工作区统一 `hindsight-memory` 约定。 | 工作要求由系统强制限制写入时，先取得目标主机的边界实测。两位现有 Kimi 角色使用宿主权限的授权仅适用于这两位。 |
+| 研究分析师 · `workspace_research` | **mac-work Codex**，现任角色使用 `gpt-6.2-astra`、`medium`。技术调查按原件和版本取证。产品研究按材料调用 `competitor-analysis` 比较同一场景的竞品，`summarize-interview` 从访谈提取用户任务，`sentiment-analysis` 按样本分组整理正反反馈。[pm-skills v2.3.0](https://github.com/phuryn/pm-skills/tree/9af7bfd0bc47fdad43c2eaa7a43cd13918e7aaef) | 关键结论标来源、适用条件及可改变判断的证据。样本不足时保留实际数量和未知项。[Codex 换绑验收 CLOU-73](http://10.207.56.3:3000/cloud-work/issues/CLOU-73) · [原 Windows Kimi 记忆验收 CLOU-30](http://10.207.56.3:3000/cloud-work/issues/CLOU-30) |
+| 软件实现工程师 · `software_implementation` | **win-work Kimi**。实际故障用 `debugging-and-error-recovery`，有回归风险的行为变更用 `test-driven-development`，复杂改动用 `incremental-implementation` 分步交付。三项取自公子的 [my-agent-skills 6.4.0 固定版本](https://github.com/ghyghoo8/my-agent-skills/tree/af606510148d79141ab6b9643c60d39a44f06d87/plugins/my-agent-skills/skills)。项目记忆按工作区统一 `hindsight-memory` 约定。 | 工作要求由系统强制限制写入时，先取得目标主机的边界实测。原 Windows 宿主授权按当时的角色与执行环境办理。 |
 | 结构化重构、交互调试 · `software_implementation` | **win-work OMP** 是工具匹配的候选。AST、LSP 和 DAP 可提供结构匹配、引用及断点证据。 | 确认目标语言服务和调试器可用。该岗位目前有固定版本架构依据，项目历史案例覆盖的是宿主运维。 |
 | Windows 运维工程师 · `workspace_runtime` | **win-work OMP**。可使用本机 PowerShell、Windows 管理工具和 MCP 服务，已验证提升后的进程身份和工具结果。 | 普通工作区维护可复用 DSH。修改系统文件、安装服务或使用凭据时，按任务给出目标、授权范围、恢复方法及验收证据。 |
 | Multica 系统管理员 | **win-work OMP + `multica-backend`**。适合查实例、核对 Run、使用任务内 CLI 回报。 | 涉及 workspace owner 能力时，分别核验操作者与普通 Run 的身份、调用范围和一项可恢复操作。技能、宿主管理员、平台令牌各有独立作用。 |
 | 项目知识维护 · `workspace_knowledge` | **win-work Hermes** 已用真实 Multica ACP 任务验证首轮项目记忆和获准的跨库读取。OMP 和 DSH 也有各自的派发与读取回执。 | 需要在宿主中断后无人值守续跑的岗位，仍须单独验证恢复。引用具体历史结论时按原文档核查。[五端安装与验收报告](hindsight-installation-report-2026-11-20.md) |
 
 有可复用角色时，先看它能否交付样本、是否接触过待审产物、权限是否覆盖任务。统一使用一种运行时可减少插件和升级维护，但 Windows 服务、独立审查与特定工具各有自己的验收条件。只有任务确实受数据位置、权限边界、工具或独立性约束时，才值得增加一个组合。以下判断有对应案例，速度、成本和模型质量尚无同题对照数据。
+
+**研究分析师换绑记录（2026-11-25）。** 沿用原 Agent、五项岗位 Skill 和既有独立决策身份。角色已移除 Windows Python 的 stdio 覆盖，改用已分配的工作区 `decision-service-agent`。CLOU-73 用两条相反的访谈反馈验证研究方法，并分别检查历史决定读回和项目记忆召回。配置已读回；新会话结果待原卡验收。[迁移验收原卡](http://10.207.56.3:3000/cloud-work/issues/CLOU-73)
 
 ## 两端实际登记的运行时
 
@@ -97,7 +99,7 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 
 **结构。** 现装 Kimi Code 2.6.3 的 TypeScript 内核分为 App、Session 和 Agent 三层作用域。CLI 和 ACP 入口共用内核。一次任务在 Agent 层运行模型与工具循环，内置工具、MCP 和已加载工具进入作用域内的注册表。每个 Agent 的 Wire 日志按顺序追加事件，循环可从相应分支重建历史。权限层对一次工具请求作放行、拒绝或询问的决定，询问如何落地取决于连接它的客户端。[2.6.3 作用域](https://github.com/MoonshotAI/kimi-code/blob/b0de2fbd2de04d87689225aafd3912e5d193b62d/packages/agent-core-v2/src/app/scopes.ts#L3-L15) · [工具执行器](https://github.com/MoonshotAI/kimi-code/blob/b0de2fbd2de04d87689225aafd3912e5d193b62d/packages/agent-core-v2/src/agent/toolExecutor/toolExecutorService.ts#L90-L124) · [Wire 日志](https://github.com/MoonshotAI/kimi-code/blob/b0de2fbd2de04d87689225aafd3912e5d193b62d/packages/agent-core-v2/src/wire/wireService.ts#L73-L154)
 
-**选型取舍。** 一套宿主能给研究角色配引用与附件要求，给实现角色配编辑与测试工具，模型接入和会话逻辑可复用。代价在 ACP 边界。Multica 固定启动 `kimi acp` 并应答工具授权，`cwd` 和角色指令无法强制限制提升后的 Windows 账户。现有两位 Kimi 角色已获准采用指令限定的工作区。CLOU-6 的源码引用可读回，CLOU-7 首次 Run 结束却没有产物，原卡复跑后才得到通过 7 项独立断言的修复。研究和实现可复用这条交付链，有硬隔离或逐次人工审批要求的岗位要另验宿主与客户端。[Kimi 权限决策](https://github.com/MoonshotAI/kimi-code/blob/b0de2fbd2de04d87689225aafd3912e5d193b62d/packages/agent-core-v2/src/agent/permissionGate/permissionGateService.ts#L31-L69) · [Multica 的 ACP 入口](https://github.com/multica-ai/multica/blob/2fcb424b72b024f65161809081009063846ea44d/server/pkg/agent/kimi.go#L52-L76)
+**选型取舍。** 一套宿主能给研究角色配引用与附件要求，给实现角色配编辑与测试工具，模型接入和会话逻辑可复用。代价在 ACP 边界。Multica 固定启动 `kimi acp` 并应答工具授权，`cwd` 和角色指令无法强制限制提升后的 Windows 账户。当时的两位 Kimi 角色获准采用指令限定的工作区。CLOU-6 的源码引用可读回，CLOU-7 首次 Run 结束却没有产物，原卡复跑后才得到通过 7 项独立断言的修复。研究和实现可复用这条交付链，有硬隔离或逐次人工审批要求的岗位要另验宿主与客户端。[Kimi 权限决策](https://github.com/MoonshotAI/kimi-code/blob/b0de2fbd2de04d87689225aafd3912e5d193b62d/packages/agent-core-v2/src/agent/permissionGate/permissionGateService.ts#L31-L69) · [Multica 的 ACP 入口](https://github.com/multica-ai/multica/blob/2fcb424b72b024f65161809081009063846ea44d/server/pkg/agent/kimi.go#L52-L76)
 
 ### OMP
 
@@ -214,7 +216,7 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 5. **让决策能力随角色配置。** 新建或调整已启用决策 MCP 的角色时，核对实际调用身份、目标项目服务端权限和岗位采纳权，挂载 `decision-service` Skill。在自定义 prompt 写明下一步明确时直接做、缺事实先查、有实质取舍主动调用、超出职责沿原卡转交。审查和研究等岗位按职责提供取舍建议及证据，由指定负责人决定采纳，独立验收仍按原约定执行。读回 prompt、MCP、Skill 及授权，对已取得目标项目业务权限的执行角色，再在该项目的新会话做两个小样本。对限于建议或仅获测试授权的角色，按本职验收建议、转交和授权边界。查看明确路径样本的工具轨迹和交付验证，查看实质取舍样本的一条决定、所选动作与反馈。换入口或撤销时同步检查提示词和真实权限。[主动推进与按需决策](../skills/workspace-coordination/SKILL.md#主动推进与按需决策)
 6. **留下可追溯的结论。** 记录日期、主机、版本、Issue/Run、可复核产物及待验项。工具可用、Run 结束、角色能力通过、业务结果获负责人接受分开记录。角色调用范围用 `private` 或 `public_to` 表达。已有管理员允许整个工作区调用，是该角色经确认的例外。
 
-win-work 的 Kimi 2.7.2 会话可在任务目录 `.kimi/skills/<名称>/SKILL.md` 读取 Multica 挂载的岗位 Skill。研究员和工程师都从这里读到了各自的三项正文；这些名称未列入它们的原生 `Skill` 菜单。共享记忆位于 `~/.kimi-code/skills/hindsight-memory`。配置新角色时可分别验收任务挂载和宿主入口。[研究员回执](http://10.207.56.3:3000/cloud-work/issues/CLOU-30) · [工程师回执](http://10.207.56.3:3000/cloud-work/issues/CLOU-29)
+win-work 的 Kimi 2.7.2 会话可在任务目录 `.kimi/skills/<名称>/SKILL.md` 读取 Multica 挂载的岗位 Skill。在原 Kimi 验收中，研究员和工程师都从这里读到了各自的三项正文；这些名称未列入它们的原生 `Skill` 菜单。共享记忆位于 `~/.kimi-code/skills/hindsight-memory`。配置新角色时可分别验收任务挂载和宿主入口。[研究员回执](http://10.207.56.3:3000/cloud-work/issues/CLOU-30) · [工程师回执](http://10.207.56.3:3000/cloud-work/issues/CLOU-29)
 
 ## win-work 同一 Run 内的原生子智能体
 
@@ -235,7 +237,7 @@ win-work 的 Kimi 2.7.2 会话可在任务目录 `.kimi/skills/<名称>/SKILL.md
 
 **决策 MCP 优先级：低（研究分析师、运维工程师、Multica 系统管理员）。** 三个岗位优先交付本职任务。已有依据和明确步骤时直接执行；职责内有多个可行方案，且选择会明显影响交付或风险时，才按需调用。涉及项目方向或跨团队资源取舍时，沿原卡把证据和建议交给项目负责人或工作区协调员。后续适配和专项复验优先保障负责人、协调员；这三个岗位遇到实际任务受阻时再跟进。
 
-研究分析师（Kimi 2.7.2）、运维工程师和 Multica 系统管理员（OMP 19.0.1）的工作区均启用 `decision-service-agent`，三个角色各有一个服务端 `multica-agent-<Agent UUID>`。2026-11-21 核实三者的项目清单均含「Multica 运行时验证」与 `fanren-work`，独立决策身份的检索 bank 数为 0。以下实单只在验证项目执行，使用 `recall=skip`。平台账号和原生 MCP 的调用身份分别核对。[角色与项目授权](workflow-reporting.md#决策服务的项目与-agent-授权)
+以下为 2026-11-21 的 Windows 验收记录。研究分析师（当时使用 Kimi 2.7.2）、运维工程师和 Multica 系统管理员（OMP 19.0.1）的工作区均启用 `decision-service-agent`，三个角色各有一个服务端 `multica-agent-<Agent UUID>`。2026-11-21 核实三者的项目清单均含「Multica 运行时验证」与 `fanren-work`，独立决策身份的检索 bank 数为 0。以下实单只在验证项目执行，使用 `recall=skip`。平台账号和原生 MCP 的调用身份分别核对。[角色与项目授权](workflow-reporting.md#决策服务的项目与-agent-授权)
 
 **OMP。** 两个岗位都在首个新会话直接使用已启用的工作区 HTTP 条目。OMP 的工具轨迹可能显示为 `read`、`write` 或 `eval`。先通过 `xd://` 查决策工具及 schema，再由动态工具调用 `get_decision`、`evaluate_decision` 和 `record_decision_feedback`。验收时核目标工具、实际请求号和服务端 caller。两个角色均沿用原运行时配置。
 
