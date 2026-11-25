@@ -8,7 +8,7 @@
 | --- | --- |
 | [连接登记表](examples/connection.json.example) | 从部署方和原生管理面核读后填写，供 ChatGPT 自定义 MCP 表单使用。空值表示待核。 |
 | [原生更新包样例](examples/native-update/) | 展示 portable 清单、Codex 兼容清单和原生 App 绑定的文件形状。包名与版本是样例，App ID 留待原生登记后读回。 |
-| [Multica Dot Skill](multica-backend/skills/multica-dot/SKILL.md) | 云端 Dot 的发现、交办、同请求对账与汇报指引，随包携带[对账参考](multica-backend/skills/multica-dot/references/reconciliation.md)。 |
+| [Multica Dot Skill](multica-backend/skills/multica-dot/SKILL.md) | 云端 Dot 下发已授权任务、回收结果和反馈、形成跨项目战略建议的指引，随包携带[对账参考](multica-backend/skills/multica-dot/references/reconciliation.md)。 |
 
 ## 装配方式与实证
 
@@ -20,7 +20,9 @@
 
 ## 使用边界与版本
 
-云端插件用于分发 Dot Skill 并绑定认证的 MCP。[服务端设计](../docs/decisions/001-dot-multica-gateway.md)由 MCP 将获准动作映射到固定版本的 Multica REST，并保存派发回执，模块进度见 [mcp/](../mcp/README.md)。原生 [Multica 后端 Skill](../skills/multica-backend/SKILL.md) 由 Multica Agent 的运行环境加载，提供该岗位的 CLI / REST 操作指引。Task Mailbox 保管原件、结果和读确认，Decision Service 仅在授权范围内提供有限选择及反馈记录。
+云端插件分发 Dot Skill 并绑定认证的 MCP。Dot 按原件下发已授权任务，查询、回收结果和反馈。对明确委托、跨项目反复或有重大长期影响的问题，Dot 提出战略建议，获准后提交可执行的 ADR 草案。Multica 的工作区协调员落实责任人，项目负责人主责交付与解阻。有权人作业务决定或签认验收，相关角色按自身授权使用 Decision Service。岗位分工与巡查正文以仓库规范为准。[职责与协作规范](../skills/workspace-coordination/SKILL.md) · [G8 定时任务 Prompt](../docs/g8-project-patrol-prompt.md)
+
+Multica MCP 映射获准的 REST 动作并保存派发回执。Multica Agent 的运行环境加载本地后端 Skill，按自身岗位使用 CLI / REST。Task Mailbox 保管原件、结果和读确认。[服务端设计](../docs/decisions/001-dot-multica-gateway.md) · [模块进度](../mcp/README.md) · [Multica 后端 Skill](../skills/multica-backend/SKILL.md)
 
 包发行、工具发现和上游兼容分别核对。2026-11-20 的公开发行检查以 `v0.11.0` 为部署比较基线，`v0.11.1` 为最新正式发行及待验证候选。生产最近核实的应用镜像标签为 `v0.11.0`，本次检查的当前生产版本、候选 MCP 读写兼容性为 `UNKNOWN`。公开发行、组件测试、某版本的读取资格与写入资格分别取证。发生未知、权限变化或副作用变化时暂停该动作，继续使用已验证且仍获准的能力。[版本记录](../compatibility/multica-releases.json) · [兼容验证](../docs/decisions/005-upstream-compatibility.md) · [候选正式发行](https://github.com/multica-ai/multica/releases/tag/v0.11.1)
 

@@ -1,6 +1,6 @@
 # multica-4-dot
 
-将 Multica 接入云端 Dot 的插件项目。Multica 保存任务与运行记录，Task Mailbox 保存跨端回执，Dot 负责协调、核对与汇报。Vultr 已部署独立 MCP，提供 OAuth、按实例读取、项目和 Issue 操作，以及持久派发对账。公网和原生客户端的各项验收见[工程任务](docs/multica-backend-tasks.md)。
+将 Multica 接入云端 Dot 的插件项目。Multica 保存任务与运行记录，Task Mailbox 保存跨端回执，云端 Dot 下发已获准的委托、回收进展与反馈，并从跨项目证据提出长期改进建议。Vultr 已部署独立 MCP，提供 OAuth、按实例读取、项目和 Issue 操作，以及持久派发对账。公网和原生客户端的各项验收见[工程任务](docs/multica-backend-tasks.md)。
 
 [mcp/](mcp/README.md) 存放服务端实现和契约测试，[plugin/](plugin/) 存放云端 Dot 的装配素材。上游发行跟踪与版本适配共用同一套[兼容约定](docs/decisions/005-upstream-compatibility.md)。
 
@@ -11,7 +11,7 @@
 | [工作区 PowerShell 签名流水线](deployment/workspace-signing/README.md) | cloud-work 各项目在原卡申请内部签名，腾讯签发，win-work 以当前运行账号验签。 |
 | [Multica Backend MCP 部署、配置与升级手册](deployment/multica-backend/README.md) | 首次部署、查看现网、改后端地址、新增实例、换 PAT、MCP 换版回退，以及跟进腾讯云 Multica 升级。 |
 | [Multica Backend MCP 决策与任务](docs/backend-integration.md) | Dot 直连的五项 ADR、并行任务、版本跟踪及能力验收。 |
-| [G8 与工作区协调员职责和协作规范](skills/workspace-coordination/SKILL.md) | 适用于所有工作区的权限、找人、决策、下令和回报约定。 |
+| [Multica 与云端 Dot 协作规范](skills/workspace-coordination/SKILL.md) | [云端 Dot 的提案职责](skills/workspace-coordination/SKILL.md#g8-如何提出值得采纳的建议)，以及各工作区的交办、接手、解阻和验收分工。 |
 | [项目解阻闭环](docs/project-unblock-loop.md) · [操作手册](docs/unblock-operations.md) · [ADR-006](docs/decisions/006-project-unblock-loop.md) | 原卡摘要、具名追证、单次核收、恢复与范围验收。 |
 | [unblock 版本兼容规范](AGENTS.md#unblock-版本兼容) | **跟随宿主 CLI，按能力复验。** |
 | [工作流、通知与跨端汇报方案](docs/workflow-reporting.md) | Multica 原生编排、给公子和云端 Dot 的汇报、Mac 协调桥退役与试点判定。另见[腾讯云异常补报实测](docs/tencent-run-reporter.md)。 |

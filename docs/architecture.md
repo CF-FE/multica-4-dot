@@ -2,7 +2,7 @@
 
 状态：提案，未部署、未进行线上验证。本文是可公开版本；机器身份、地址、凭据及项目原始数据另行受控管理。
 
-当前项目进度与验收入口见[工作区协调规范](../skills/workspace-coordination/SKILL.md#谁负责什么)。历次后端接入方案见[设计记录](backend-integration.md)。
+现行协作以 Multica 原 Issue 为准。云端 Dot 单向下发已有授权的任务，沿原单查询进度、收结果和反馈，按需提供跨项目取舍、长期方向与 ADR 草案。项目负责人主责交付和解阻，工作区协调员落实具名对口，有权人决定是否采纳建议，指定验收人签认。[工作区协调规范](../skills/workspace-coordination/SKILL.md#谁负责什么) · [历次后端接入方案](backend-integration.md)
 
 2026-11-20 更新。工作流转向 Multica、Mac 协调桥退役范围和跨端汇报的候选设计见[工作流、通知与跨端汇报方案](workflow-reporting.md)。下文保留 v0.1 的提案背景。
 
@@ -17,7 +17,7 @@
 | 控制面 | 腾讯云 VPS | Multica Web、API 和独立 PostgreSQL 17；保管 Issue、Run、上传文件 |
 | 执行面 | mac-work 优先候选，win-work 可替换 | Multica Daemon 领取 Run，同机调用 Codex 或 Kimi CLI；用专用用户/隔离目录 |
 | MCP 接入与回执中转 | Vultr VPS | 复用已授权的 Task Mailbox 入口；如需 G8 脱离本地工作机后稳定查询，再加独立窄接口 Multica MCP |
-| 上游协调 | 云端 Dot（G8） | 下达获授权的目标、查原始状态、核对回执；不默认替代项目协调员 |
+| 云端任务入口与战略参谋 | 云端 Dot（G8） | 下发获授权的任务，查原始状态，收结果和反馈，按需提供跨项目方案与长期方向 |
 | 项目记忆 | Hindsight 项目 bank | 保留架构、决策和已验证经验；不是队列、去重表或业务验收来源 |
 
 日常人工入口是 Web；能访问同一 API 的官方管理 CLI 或支持自托管的 Desktop 也是入口。Multica CLI 是管理/连接工具，Daemon 是领取任务和驱动本机执行的进程，Codex/Kimi CLI 才是执行器。不把三者装在腾讯云只是为了「方便」，也不假定现有登录、PATH、MCP 能力自动继承。[自托管快速入门](https://multica.ai/docs/self-host-quickstart) · [运行时](https://multica.ai/docs/daemon-runtimes) · [CLI](https://multica.ai/docs/cli) · [Desktop](https://multica.ai/docs/desktop-app)

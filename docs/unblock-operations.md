@@ -41,14 +41,16 @@ python3 -m unblock g8 --config cases.json
 python3 -m unblock tick --config cases.json
 ```
 
-`summary` 返回最近一次由协调员核收的摘要、原评论、各项条件、责任人及来源增量。`basis=coordinator_reviewed_summary` 表示程序核了摘要作者和原线程，并根据登记与引用计算下一步；实际业务授权、产物来源及验收语义仍由有权人对照引用的原件核准。`g8` 列出等待 G8 处置和已由 G8 接手且仍归其办理的事项，并披露读取不完整的范围。`tick` 默认预览。在另行获准的项目，将指定登记的 `notifications_enabled` 设为 `true` 后，才使用下列实际通知命令。可以挂到现有调度器，每次完成就退出；只读取所列项目与卡。单卡试点使用 `--issue`，保存同一私有 SQLite 的绝对路径。
+`summary` 返回最近一次由协调员核收的摘要、原评论、各项条件、责任人及来源增量。`basis=coordinator_reviewed_summary` 表示程序核了摘要作者和原线程，并根据登记与引用计算下一步。实际业务授权、产物来源和验收由有权人对照原件核准。`g8` 是登记范围内的只读查询，按现有 v1 字段筛出待接手、待核及跨端跟进项。G8 查交办进度、回收结果和反馈以原 Issue、原请求和原 `job_id` 为准。旧回执中的责任人和复查点由协调员按现任分工在原线程补新修订。字段释义见[摘要格式](unblock-record-format.md#cli-消费评估结果)，角色分工见[协作规范](../skills/workspace-coordination/SKILL.md)。
+
+`tick` 默认预览。在另行获准的项目，将指定登记的 `notifications_enabled` 设为 `true` 后，才使用下列实际通知命令。可以挂到现有调度器，每次完成就退出。单卡试点使用 `--issue`，保存同一私有 SQLite 的绝对路径。
 
 ```sh
 python3 -m unblock tick --config cases.json --issue "$ISSUE_ID" --db "$LEDGER" --apply
 python3 -m unblock recover --config cases.json --issue "$ISSUE_ID" --checkpoint "$CHECKPOINT" --db "$LEDGER"
 ```
 
-原线程补件、信箱新版本和到期是同一回合的触发线索。原卡已有执行或合适的在途唤醒时显示 `deferred` 及原因，常规预检不会消耗本轮认领。结果不明先 `recover`，用原通知和实际开始的精确 Run 确认投递；协调员接手仍取其单独回证。输出中的 `source_reads_complete` 表示数据覆盖情况，`notifications_unconfirmed` 计数仍待核的发送。新的账本文件会丢失旧认领历史，须保护并备份原文件。判定可恢复时，项目负责人核对最新授权和在途，沿原卡执行；该命令集不直接执行项目工作。
+原线程补件、信箱新版本和到期是同一回合的触发线索。`tick --apply` 的写入是给所属工作区现任协调员创建一次性原线程唤醒。原卡已有执行或合适的在途唤醒时显示 `deferred` 及原因，常规预检不会消耗本轮认领。结果不明先 `recover`，用原通知和实际开始的精确 Run 确认投递，再取协调员的接手回证。输出中的 `source_reads_complete` 表示数据覆盖情况，`notifications_unconfirmed` 计数仍待核的发送。新的账本文件会丢失旧认领历史，须保护并备份原文件。判定可恢复时，项目负责人核对最新授权和在途，沿原卡执行。
 
 ## 腾讯协调端与 G8 原卡交接
 
@@ -77,4 +79,4 @@ python3 -m unblock verify-copy --source-root "$SOURCE_ROOT" --source-relative "$
   --expected-bytes "$EXPECTED_BYTES" --expected-sha256 "$EXPECTED_SHA256"
 ```
 
-停用时先停止相应调度并关闭该登记的新通知，核对在途的原生唤醒及 Run；已存在的原生规则按[接入说明](unblock-native.md)核对或停用。保留账本和原回执，继续用 `recover` 或原生只读入口核对。原卡摘要、项目负责人和 G8 的既有人工流程仍可办理该件。
+停用时先停止相应调度并关闭该登记的新通知，核对在途的原生唤醒及 Run。已存在的原生规则按[接入说明](unblock-native.md)核对或停用。保留账本和原回执，继续用 `recover` 或原生只读入口核对。项目负责人沿原卡续办，协调员协助落实对口，G8 沿原委托查询和收回结果。

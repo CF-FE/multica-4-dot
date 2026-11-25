@@ -41,7 +41,7 @@
       },
       "g8": {
         "id": "00000000-0000-4000-8000-000000000008",
-        "name": "示例兜底负责人",
+        "name": "示例云端发件人",
         "appointment_ref": "fixture:g8-appointment",
         "valid_from": "2026-11-01T00:00:00+08:00",
         "valid_until": null
@@ -109,7 +109,7 @@
 }
 ```
 
-上例在北京时间 2026-11-21 14:00 得到 `state=blocked`、`next_action=request_g8_review`、`g8_pending=true` 和 `checkpoint_due=false`。此时技术取证已核，业务许可与隔离还缺有权补证人。
+上例在北京时间 2026-11-21 14:00 得到 `state=blocked`、`next_action=request_g8_review`、`g8_pending=true` 和 `checkpoint_due=false`。此时技术取证已核，业务许可与隔离还缺有权补证人。协调员落实对口。已约定向 G8 回报的任务，G8 可沿原委托看到该缺口。
 
 ### 单项任务的最小输入
 
@@ -155,9 +155,9 @@
 
 ## 字段与原件
 
-登记与摘要中的实例、工作区、项目、原卡、原线程和协调员必须逐项一致。`revision` 是从一开始递增的原卡摘要修订号，同时以原生历史检查同号冲突和倒退。日常使用协调员签认的 `snapshot.checkpoint_id`。试点可填写 `registration.checkpoint_id` 固定预期轮次。同一核收轮次的补件与到期共用该 ID，重新登记独立检查点时生成从未使用的新 ID。`recorded_at` 是协调员签认该修订的时间。`due_at` 为空时只等事件，`decision_due_at` 可选，用于尚缺补证时触发 G8 升级。`no_local_action` 可选，表示同因重现且协调员核实当前没有可行的本地动作。
+登记与摘要中的实例、工作区、项目、原卡、原线程和协调员必须逐项一致。`revision` 是从一开始递增的原卡摘要修订号，同时以原生历史检查同号冲突和倒退。日常使用协调员签认的 `snapshot.checkpoint_id`。试点可填写 `registration.checkpoint_id` 固定预期轮次。同一核收轮次的补件与到期共用该 ID，重新登记独立检查点时生成从未使用的新 ID。`recorded_at` 是协调员签认该修订的时间。`due_at` 为空时只等事件。`decision_due_at` 可选，记录最迟决定时间。到期仍缺证据时，v1 输出待跟进的提示，由协调员在原卡落实有权对口。`no_local_action` 可选，表示同因重现且协调员核实当前没有可行的本地动作。
 
-`required_evidence` 明确列出本件恢复所需的证据，不能为空或重复。每项以一个小写字母开头，后续可用小写字母、数字和下划线，总长不超过 64。每项与 `roles` 中的同名职责相配；无任职依据时省略该角色。首件场景的 `technical`、`business`、`isolation` 分别指技术能力、有效业务许可、生产隔离。任一职责缺失只影响该项。保留键 `coordinator`、`sender`、`project_lead`、`acceptor`、`g8`、`disposition` 分别用于原卡核收、派发对账、负责人接手与恢复、指定验收、G8 核收与正式处置。`coordinator` 为必填，其 ID 及任职窗口须覆盖摘要签认和评估时点。
+`required_evidence` 明确列出本件恢复所需的证据，不能为空或重复。每项以一个小写字母开头，后续可用小写字母、数字和下划线，总长不超过 64。每项与 `roles` 中的同名职责相配。无任职依据时省略该角色。首件场景的 `technical`、`business`、`isolation` 分别指技术能力、有效业务许可、生产隔离。任一职责缺失只影响该项。保留键 `coordinator`、`sender`、`project_lead`、`acceptor`、`g8`、`disposition` 分别用于原卡核收、派发对账、负责人接手与恢复、指定验收、G8 的跨端收件回证与有权方正式处置。G8 按协作规范以云端发件人或结果收件人登记。业务验收和正式处置各登记实际有权方。`coordinator` 为必填，其 ID 及任职窗口须覆盖摘要签认和评估时点。
 
 角色以 `appointment_ref` 记录任职原件，窗口左闭右开。取证依据和授权原件须分别核对对象、版本、职责和发生时间。时间用含秒与时区的 ISO 8601 字符串，`valid_until=null` 表示原件未设结束时间。所有来源记录的 `at` 最迟为该修订的 `recorded_at`。每条记录携带 `ref`、`actor_id`、`at`、`source_scope`。其中 `source_scope` 的四项表达原件核实后实际覆盖的实例、工作区、项目和原卡。外部原件仍以其自身引用留存，摘要须能证实其覆盖当前案。引用由协调员验证输入来源，模型校验已签认数据的关联与权限边界。
 
@@ -168,8 +168,8 @@
 | `target` | `id`、`version`、`step`、`acceptance_scope`。可用 `expected_evidence` 写明要交回的具体证据，用 `request_id` 关联原交办。`executor_id` 填原卡具名执行人；尚待协调员落实时填 `null`，省略时沿用登记的项目负责人 |
 | `evidence.<key>` | `target_id`、`target_version`、`valid_until`、`result`。结果为 `confirmed` 或 `rejected`；没有原件则省略该项 |
 | `contacts.<key>`、`pursuers.<key>` | 联系人填写 `name`、`ref`，追证人另带 `id`。两类均为线索或安排，有权补证者从职责索引读取。无追证人时由协调员跟进 |
-| `g8_request` | `request_id` 标识本次升级。用当前原线程、目标、版本、检查点和动作绑定本次升级；以往升级的接手时间或事件不覆盖当前动作的复查点。绑定原信箱时，`job_id` 须与登记的 `mailbox.job_id` 一致，且摘要须有非负整数 `mailbox_result_version`。可附 `read_ack_ref` 记录已读 |
-| `g8_acceptance` | 同一个 `request_id`、`next_owner_id`，以及 `next_check_at` 或 `next_check_event`，也可两者都有。回证不得早于请求，定时检查须晚于回证。事件须能从约定的原生补件、指定 Run 或原 job 观察到 |
+| `g8_request` | `request_id` 标识沿原委托发给 G8 的跟进记录，绑定当前原线程、目标、版本、检查点和动作。绑定原信箱时，`job_id` 须与登记的 `mailbox.job_id` 一致，且摘要须有非负整数 `mailbox_result_version`。可附 `read_ack_ref` 记录已读 |
+| `g8_acceptance` | 引用 G8 的跨端收件回证，填同一个 `request_id`、原卡已核实的 `next_owner_id` 及 `next_check_at` 或 `next_check_event`。回证不得早于请求，定时检查须晚于回证。事件须能从约定的原生补件、指定 Run 或原 job 观察到。执行接手使用独立的 `pickup` 原件 |
 | `execution` | 本动作的绑定字段、`run_id`、`artifact_id`。引用项目负责人对实际成功执行和产物的回证，时间记录该次执行时点 |
 | `acceptance` | 本动作的绑定字段、相同的 `run_id` 和 `artifact_id`、`scope`、`result`。范围为 `first_item` 或 `issue`，结论为 `accepted` 或 `rejected` |
 | `disposition` | `target_id`、`target_version`、`reason`、`status`。暂停填 `paused` 及 `resume_condition`，取消填 `cancelled` |
@@ -192,6 +192,8 @@
 
 `next_action` 优先处理已确认的暂停和取消，其次核对未知或在途活动，再处理取证、恢复和验收。核对发现已有产物时，先沿原记录只读核实与补回证。`verify_and_resume` 由项目负责人沿原授权核对并恢复一次。`owner_id` 标明下一步负责人，缺接手回证时由登记发件人、或默认协调员对账。未通过的验收交回相应范围复核。
 
-G8 的只读清单也展示需要跟进的 `awaiting_pickup` 动作。需协调员升级或跟进原请求时 `g8_pending=true`。有效 G8 回证后 `g8_status=accepted`，下一责任人来自原回证，`g8_next_check_event` 和 `g8_next_check_at` 保留约定。暂停、取消和已验收完成时 `notification_open=false`。G8 有效接手后，`checkpoint_due` 只比较新接手时间；仅约定事件时保持 false，由原生读取层提交已核实的事件线索。通知入口同时检查 `notification_open` 以及到期或有效事件。
+`g8` 只读清单沿用 v1 的 `g8_pending`、`request_g8_review`、`follow_g8_plan` 等既有枚举。它从登记中筛出待接手、需查看和部分待跟进的事项。原 Issue 和原委托提供完整的业务状态。`g8_status=accepted` 表示模型核到匹配的 G8 回证。程序从回证取 `next_owner_id` 和复查点，供原线程跟进使用。仅约定事件时 `checkpoint_due=false`，由原生读取层提交已核实的事件线索。旧摘要若仍将业务动作交给 G8，协调员沿原线程核对实际接手人，再补发同一动作的新摘要修订。保留旧回执和原检查点账本。
+
+暂停、取消和相应范围验收完成时 `notification_open=false`。`close_cancelled` 和 `record_issue_acceptance` 是只读评估结果，分别依据已登记的正式处置记录或验收人回证。自动通知入口检查 `notification_open` 和到期或有效事件，收件人固定为已核实的现任协调员。
 
 必填字段缺失、类型错误、未来签认时间、错项目和错请求返回 `ValueError`。角色、证据时效或目标关联待核时，评估保留相应状态和引用。未知活动、权限读取失败和不全的来源应沿原卡查证。模型只负责评估，修订历史与原件归属由读取层核验，通知、对账及是否开始原动作分别沿既有入口处理。

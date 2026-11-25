@@ -6,7 +6,7 @@
 
 ## 推荐方案
 
-G8 与所有工作区协调员的职责、决策时机、指令和回报格式以[职责与协作规范](../skills/workspace-coordination/SKILL.md)为准。本方案记录通路设计与实际验证。
+G8 的下发与收件边界，以及 Multica 内部的协调、决策与验收职责以[职责与协作规范](../skills/workspace-coordination/SKILL.md)为准。本方案记录通路设计与实际验证。
 
 任务从所属 Multica 项目进入。日常分工、执行、返工和面向公子的通知都在原 Issue 或原聊天线程完成。只有约定向云端 Dot 汇报的事项才进入 Task Mailbox。对这些事项，**协调员解释工作结果，一个独立于 Worker 的程序核对运行事实并补报异常**。即使 Worker 来不及说最后一句话，协调方也有证据可查。
 
