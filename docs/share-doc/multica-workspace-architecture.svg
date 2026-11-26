@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1080" viewBox="0 0 1440 1080" role="img" aria-labelledby="title desc">
+<title id="title">多智能体协作参考架构</title>
+<desc id="desc">用户通过渠道与个人 Bot 对话，也可直达协作平台。去程按授权选择平台实例、工作区和项目，回程关联原任务及发起会话。当前项目以 Multica 实现；lody、orca 是待验证的候选平台。每个项目由具名负责人主办，按需调用工作区内的协调员和专业小队。执行者提交产物，指定验收人签认。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 1 1 L 8 5 L 1 9" fill="none" stroke="#25675f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<style>text{font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;fill:#162e39} .text{font-size:18px} .sub{font-size:16px;fill:#3b5861} .small{font-size:15px;fill:#326559} .h{font-size:23px;font-weight:650} .section{font-size:22px;font-weight:650} .white{fill:#fff} .muted{fill:#bfe5d8} .header{font-size:41px;font-weight:700}.edge{stroke:#25675f;stroke-width:2.2;fill:none;stroke-linejoin:round;stroke-linecap:round}</style>
+<rect x="0" y="0" width="1440" height="1080" rx="0" fill="#fbfcfa" stroke="none"/>
+<text x="37" y="61" class="header">多智能体协作参考架构</text>
+<text x="38" y="98" class="h">从对话找到项目，从交付结果找回原会话</text>
+<text x="1105" y="88" class="small" data-max="275">现有通路与扩展示例  /  2026.11.26</text>
+<rect x="32" y="124" width="1376" height="140" rx="14" fill="#edf4f2" stroke="none"/>
+<text x="52" y="163" class="section" data-max="149">交互与授权</text>
+<text x="52" y="194" class="sub" data-max="149">用户从哪里说</text>
+<text x="52" y="217" class="sub" data-max="149">哪个 Bot 接话</text>
+<rect x="32" y="311" width="1376" height="163" rx="14" fill="#edf4f2" stroke="none"/>
+<text x="52" y="350" class="section" data-max="149">跨端接入</text>
+<text x="52" y="381" class="sub" data-max="149">去程选项目</text>
+<text x="52" y="404" class="sub" data-max="149">回程找会话</text>
+<rect x="32" y="505" width="1376" height="263" rx="14" fill="#edf4f2" stroke="none"/>
+<text x="52" y="544" class="section" data-max="149">项目协作</text>
+<text x="52" y="575" class="sub" data-max="149">谁负责交付</text>
+<text x="52" y="598" class="sub" data-max="149">谁按版本复核</text>
+<rect x="32" y="808" width="1376" height="165" rx="14" fill="#edf4f2" stroke="none"/>
+<text x="52" y="847" class="section" data-max="149">运行与工具</text>
+<text x="52" y="878" class="sub" data-max="149">在哪里执行</text>
+<text x="52" y="901" class="sub" data-max="149">依赖什么能力</text>
+<rect x="265" y="145" width="398" height="102" rx="10" fill="#ffffff" stroke="#b3c8c8"/>
+<text x="284" y="177" class="h" data-max="360">用户端 · 对话渠道</text>
+<text x="284" y="207" class="sub" data-max="360">Web、App、IM 等都可承载对话</text>
+<text x="284" y="231" class="sub" data-max="360">现有直达入口：Multica Web / Go</text>
+<rect x="852" y="145" width="528" height="102" rx="10" fill="#ffffff" stroke="#b3c8c8"/>
+<text x="871" y="177" class="h" data-max="490">Bot 端 · 个人 Agent</text>
+<text x="871" y="207" class="sub" data-max="490">已接入：云端 Dot（G8）</text>
+<text x="871" y="231" class="sub" data-max="490">扩展示例：Grok Bot、DSH-Bot 等</text>
+<path class="edge" d="M 674 210 H 839" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<text x="725" y="191" class="small" data-max="151">双向对话</text>
+<rect x="316" y="330" width="441" height="141" rx="10" fill="#ffffff" stroke="#b3c8c8"/>
+<text x="335" y="362" class="h" data-max="403">回程 · 结果与回执</text>
+<text x="335" y="392" class="sub" data-max="403">按原委托取回结果，核版本与摘要</text>
+<text x="335" y="416" class="sub" data-max="403">当前：G8 通过 Task Mailbox 按 job_id 读取</text>
+<rect x="852" y="330" width="528" height="141" rx="10" fill="#ffffff" stroke="#b3c8c8"/>
+<text x="871" y="362" class="h" data-max="490">去程 · 目标平台与项目</text>
+<text x="871" y="392" class="sub" data-max="490">核准身份后，定位平台实例 → 工作区 → 项目</text>
+<text x="871" y="416" class="sub" data-max="490">当前：Multica Backend MCP 按原请求找回 Issue</text>
+<text x="335" y="452" class="sub" style="fill:#824812" data-max="403">待扩展：按原 Bot、渠道、会话或线程回送</text>
+<text x="871" y="452" class="sub" style="fill:#824812" data-max="490">待适配：目标平台的项目、任务和接单入口</text>
+<path class="edge" d="M 960 248 V 281 H 535 V 324" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<text x="606" y="275" class="small" data-max="190">按原委托收发</text>
+<path class="edge" d="M 1135 249 V 323" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<text x="1150" y="292" class="small" data-max="150">按授权派发 / 查询</text>
+<path class="edge" d="M 845 397 H 762" marker-end="url(#arrow)"/>
+<text x="765" y="383" class="small" data-max="82">读原单</text>
+<path class="edge" d="M 265 218 H 222 V 558 H 257" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<text x="231" y="404" class="small" data-max="80">平台入口</text>
+<text x="231" y="427" class="small" data-max="80">直达原任务</text>
+<path class="edge" d="M 1116 472 V 517" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<text x="1132" y="487" class="small" data-max="205">按授权读写原任务</text>
+<rect x="263" y="524" width="1117" height="201" rx="10" fill="#f8fbfa" stroke="#8aaea5"/>
+<rect x="263" y="524" width="1117" height="52" rx="10" fill="#16443f"/>
+<text x="283" y="558" class="h white" data-max="530">协作平台 / 工作区</text>
+<text x="790" y="556" class="text white" data-max="568">当前：Multica · cloud-work　｜　候选：lody、orca（待验证）</text>
+<text x="286" y="614" class="h" data-max="246">工作区协调员</text>
+<text x="286" y="652" class="text" data-max="246">按工作区任命 · 例：Mike</text>
+<text x="286" y="681" class="sub" data-max="245">找对口、协调跨项目依赖</text>
+<path class="edge" d="M 635 662 H 532" marker-end="url(#arrow)" stroke-dasharray="4 4"/>
+<text x="539" y="645" class="small" data-max="93">按需协调</text>
+<text x="656" y="610" class="h" data-max="301">项目 → 现任负责人</text>
+<rect x="649" y="620" width="293" height="36" rx="6" fill="#e1eeea"/>
+<text x="660" y="645" class="text" data-max="274">项目 A → A 的负责人</text>
+<rect x="649" y="662" width="293" height="36" rx="6" fill="#e1eeea"/>
+<text x="660" y="687" class="text" data-max="274">项目 B → B 的负责人</text>
+<path class="edge" d="M 951 662 H 1064" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<text x="960" y="645" class="small" data-max="99">分工 / 回件</text>
+<text x="1078" y="614" class="h" data-max="288">工作区 Agent 与小队</text>
+<text x="1078" y="652" class="text" data-max="284">例如，开发团队、质量团队</text>
+<text x="1078" y="681" class="sub" data-max="284">同区项目按权限调用，结果回原任务</text>
+<text x="264" y="752" class="sub" data-max="1100">跨平台复用岗位职责与协作方式；工作区、项目、原任务和执行记录按目标平台映射，任命与权限分别核实。</text>
+<path class="edge" d="M 535 765 V 830" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<text x="552" y="795" class="small" data-max="260">领取任务 / 回传执行证据</text>
+<rect x="263" y="835" width="517" height="112" rx="10" fill="#ffffff" stroke="#b3c8c8"/>
+<text x="282" y="867" class="h" data-max="479">执行环境</text>
+<text x="282" y="897" class="sub" data-max="479">执行器领取任务，返回执行记录、产物及版本</text>
+<text x="282" y="921" class="sub" data-max="479">当前：Multica Daemon → mac-work / win-work 的 Harness</text>
+<rect x="820" y="835" width="560" height="112" rx="10" fill="#ffffff" stroke="#b3c8c8"/>
+<text x="839" y="867" class="h" data-max="522">可选能力 · 决策与项目记忆</text>
+<text x="839" y="897" class="sub" data-max="522">有实质取舍时比较方案；遇到相似问题时查项目经验</text>
+<text x="839" y="921" class="sub" data-max="522">当前：Decision MCP、Hindsight 项目 bank</text>
+<rect x="32" y="991" width="1376" height="66" rx="12" fill="#193642" stroke="none"/>
+<text x="52" y="1032" class="h white" data-max="290">读图时区分五种证据</text>
+<text x="376" y="1032" class="text white" data-max="992">委托送达    /    具名接手    /    执行记录    /    交付产物    /    指定人验收</text>
+</svg>
