@@ -2,7 +2,7 @@
 
 在 Multica 新建或调整智能体时，用本文选主机、运行时、工具和验收任务。新角色职责由所属 Multica 项目的交付目标、运行权限和验收人确定，宿主能力以目标机器上的实测为准。herdr-4-codexcloud 已于 2026-11-21 退役；既有角色的固定版本引用仅用于追溯来源。本文是本仓库的选型主文档，后续直接更新同一文件。当前范围为 `cloud-work` 的 mac-work 和 win-work，按项目约定暂不纳入 Claude。选型基线为 2026-11-18 的 Multica v0.10.0。工作区协调员条目于 2026-11-20 按 v0.11.0 实例核对，本文时间均为北京时间。[历史角色库索引（1.0.3）](https://github.com/CF-FE/herdr-4-codexcloud/blob/742ab342355b32b70e2bac5ab8cc64290d56e23b/docs/worker-library/roles/index.json)
 
-**快速索引**　[找 Mike](#工作区协调员-mike) · [按岗位选](#从角色要交付的结果开始) · [两端版本与实测](#两端实际登记的运行时) · [按架构问题查](#架构比较) · [速度与 Token](#速度与-token) · [实际推理档位](#实际推理档位) · [推荐分工](#推荐分工与换选条件) · [创建与验收](#建一个可以验收的角色) · [Kimi 与 OMP 独立决策身份](#win-work-的-kimi-与-omp-独立决策身份) · [DSH 与 Hermes 独立决策身份](#win-work-的-dsh-与-hermes-独立决策身份) · [按来源查](#资料索引) · [新增或升级](#新增升级或停用时怎样更新本文)
+**快速索引**　[找 Mike](#工作区协调员-mike) · [按岗位选](#从角色要交付的结果开始) · [两端版本与实测](#两端实际登记的运行时) · [按架构问题查](#架构比较) · [速度与 Token](#速度与-token) · [实际推理档位](#实际推理档位) · [质量团队 xhigh 实测与回退](#win-work-质量团队主会话验收) · [推荐分工](#推荐分工与换选条件) · [创建与验收](#建一个可以验收的角色) · [Kimi 与 OMP 独立决策身份](#win-work-的-kimi-与-omp-独立决策身份) · [DSH 与 Hermes 独立决策身份](#win-work-的-dsh-与-hermes-独立决策身份) · [按来源查](#资料索引) · [新增或升级](#新增升级或停用时怎样更新本文)
 
 **按岗位建角**　[角色库：职责、可复用岗位与首单验收](role-library.md)
 
@@ -134,13 +134,42 @@ mac-work 有经过返工复审验证的审查链路。win-work 上的工具、�
 | win-work · Hermes | 官方文档中常见缺省为 `medium`，实际受模型覆盖、provider 和版本影响。该版 Multica 的 Hermes 适配器没有可选的角色级 effort 档位。 | **`high`**。CLOU-16 的新 ACP 会话使用 `gpt-6.2-sol`。`session.info` 同时记录 `reasoning_effort=high` 和 `reasoning_effort_wire=high`，两者均为运行时解析值。该 Run 没有独立的上游请求体。[Hermes 官方配置](https://hermes-agent.nousresearch.com/docs/user-guide/configuration#reasoning-effort) |
 | win-work · Kimi | 官方 K2.8 Preview 在开启 thinking 且调用未传 effort 时默认为 `max`，K3、K3.1 Pro 默认为 `high`。自定义端点按其模型配置解析。 | **`max`**。CLOU-18 的宿主初始绑定 `local-gpt/gpt-6.2-sol`，随后会话选择了 `kimi-code/kimi-for-coding`。`config.update` 与用量记录可核对模型，会话档位为 `max`。逐请求的推理字段未记录。[Kimi 官方模型表](https://www.kimi.com/code/docs/en/kimi-code/models.html) |
 | mac-work · Kimi | 使用同一套 Kimi 规则。换模型时按模型 ID 查默认档位。 | **`max`**。CLOU-17 的宿主配置指向 `kimi-code/kimi-for-coding`（K2.8 Preview），本次新会话也读到 `thinking_effort=max`。逐请求的推理字段未记录。[Kimi 适配器](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/pkg/agent/kimi.go#L349-L382) |
-| win-work · OMP | 18.22.2 的 `defaultThinkingLevel` 缺省为 **`high`**。配置、模型选择器后缀、模型能力或显式 `--thinking` 会影响取值。 | **运行档位未知**。默认模型验证和近期运维 Run 有 thinking 事件，未找到具体档位字段。[对应版本设置](https://github.com/can1357/oh-my-pi/blob/v18.22.2/docs/settings.md#thinking) · [Multica 启动参数](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/pkg/agent/pi.go#L1228-L1240) |
-| win-work · DSH | 0.2.2-rc.3 的内置 DeepSeek provider 默认 **`high`**。使用其他 provider 时查看实际模型在专用 profile 中公布的 `default_level` 和支持的档位。 | **运行档位未知**。已查的默认模型验证和 DSH 任务记录没有给出有效档位。[固定 RC 的 DeepSeek provider](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.2-rc.3/packages/llm/llm-deepseek/README.md) · [Multica 适配器](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/pkg/agent/dsh.go#L432-L468) |
+| win-work · OMP | 18.22.2 的 `defaultThinkingLevel` 缺省为 **`high`**。配置、模型选择器后缀、模型能力或显式 `--thinking` 会影响取值。 | **11-20 样本档位未知**。当时的默认模型验证和运维 Run 有 thinking 事件，未找到具体档位字段。[对应版本设置](https://github.com/can1357/oh-my-pi/blob/v18.22.2/docs/settings.md#thinking) · [Multica 启动参数](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/pkg/agent/pi.go#L1228-L1240) |
+| win-work · DSH | 0.2.2-rc.3 的内置 DeepSeek provider 默认 **`high`**。使用其他 provider 时查看实际模型在专用 profile 中公布的 `default_level` 和支持的档位。 | **11-20 样本档位未知**。当时的默认模型验证和 DSH 任务记录没有给出有效档位。[固定 RC 的 DeepSeek provider](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.2-rc.3/packages/llm/llm-deepseek/README.md) · [Multica 适配器](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/pkg/agent/dsh.go#L432-L468) |
 | mac-work / win-work · Codex | 可用档位取决于运行时和选中模型的目录。 | Mac 原审查员的历史 Run 没有记录具体档位。CLOU-19 在 Windows Codex 上试用 `gpt-6-luna / medium`，角色配置已读回，沙箱启动 PowerShell 失败。该试跑没有形成审查结论。 |
 
 **查原始证据。** 在 Multica 的「Multica 运行时验证」项目中查看 CLOU-16 的 Run `01a1f6e9-96be-735c-b31a-fdf0255eec92`、CLOU-17 的 Run `01a1f6e5-81f5-75b7-99b2-244fc6e2e8e6` 和 CLOU-18 的 Run `01a1f6eb-8670-7886-a598-133fcc335a10`。在 Hindsight 的 `multica-4-dot` bank 中，云端 Dot 的原始调查 ID 为 `multica-v0-11-0-harness-thinking-defaults-2026-11-20`，本次合并回执 ID 为 `multica-harness-effective-thinking-levels-20261120`。
 
 **用于估算 Token。** 先固定模型及 provider，再分别记录角色覆盖值、宿主默认值、会话解析值和供应商请求字段；缺哪层就注明哪层。原生默认 `high` 不能直接填进某次 Run 的实测栏。跨 provider 的同名档位也不能折算为固定 Token 数，费用估算使用对应模型、端点和工作负载的实际用量。
+
+### win-work 质量团队主会话验收
+
+2026-11-26，三名审核员分别复算同一份报告。13 件合格、4 件不合格，合格率为 13 ÷ 17 ≈ 76.5%。三人均退修了候选值 77.0%，三张原卡均已验收。以下档位取自对应 Run 的原生会话记录。
+
+| 岗位与原卡 | 通过的 Run | 主会话证据 |
+|---|---|---|
+| [DSH 独立质量审核员 · CLOU-76](http://10.207.56.3:3000/cloud-work/issues/01a215ef-cb1b-75d0-993b-0d5e955b9038#comment-01a215f6-c410-7ec0-ad3f-7e93c2760db8) | `01a215f5-4d5e-7b9b-82f5-43f4fbd5cffb` | `request/header.config` 记录 `local-gpt/gpt-6.1-terra`、`reasoningEffort=xhigh`。 |
+| [DSH 质量审查员（队长）· CLOU-77](http://10.207.56.3:3000/cloud-work/issues/01a215f2-50e3-793d-ab7c-6e3036a29dba#comment-01a215f6-c802-7547-95f8-9ddd0a9f0d5e) | `01a215f5-4f36-701d-a305-13a1c1d749a4` | 独立新会话的主请求同样记录 `local-gpt/gpt-6.1-terra / xhigh`。 |
+| [OMP 质量审核员 · CLOU-78](http://10.207.56.3:3000/cloud-work/issues/01a215f2-546a-78f1-9d15-6abf7b737726#comment-01a215f2-c818-7275-ad53-0c6fcc113fd1) | `01a215f2-5478-79e7-a553-8e9ba250be4e` | 原生 JSONL 的 `thinking_level_change=xhigh`，随后四条 assistant 回复均记录 `cli-proxy-responses/gpt-6.1-terra`。OMP 首次即通过。 |
+
+**故障与修复。** 原先两笔 DSH Run 都在生成答案前报 `UNSUPPORTED_REASONING_EFFORT`。模型列表已显示 Terra 支持 `xhigh`，但适配器创建主会话只传 provider 和 model，造成实际请求回落到 `local-gpt` 的共享值 `max`。修复位于 win-work 的 `multica` profile、`@multica-ai/dsh-runtime 0.2.0-private.1`：优先采用请求显式档位；档位留空且 provider、model 都与 profile 默认匹配时，继承该模型的 `reasoningEffort`。解析后校验模型支持的档位，将完整选择传给主会话；恢复已有会话时，在确认工作目录一致后应用有效档位。旧主会话里标题生成请求曾记录 `xhigh`，该字段只对应标题调用。
+
+**升级后怎么复验**
+
+1. 在 win-work 记录升级前适配器版本、文件摘要和可恢复副本。升级后先测新版原生行为。在实际启动入口运行 `dsh --profile multica --list-models`，核对 Terra 及其 `xhigh` 支持；网页目录仍旧时刷新模型列表。模型目录只覆盖发现这一步。
+2. 在「Multica 运行时验证」核对原卡、当前角色和在途 Run。沿 CLOU-76、77 各执行一次 `multica issue rerun-task <该卡上次验证的 Run UUID> --fresh`。用 Run 返回的 session ID 和工作目录定位同一角色的 `session.v4.jsonl.zstd`。逐卡核主会话 `request/header.config` 的 `provider=local-gpt`、`model=gpt-6.1-terra`、`reasoningEffort=xhigh`，再核 Run 为 `completed`、原卡回件退修且结果为 76.5%。
+3. 本次两笔 DSH 成功实单都验证了角色档位留空时的新会话继承。显式档位优先、其他模型不继承 Terra 档位、不支持的档位报错和恢复会话传参另有本机适配器检查。若升级影响会话恢复，应另用隔离会话实际恢复并核下一次主请求。仅升级 DSH 时可沿用 CLOU-78 对照；若 OMP 或其启动参数也变更，再沿 CLOU-78 新跑并查上述两个原生字段。
+
+**怎么回退。** 在 win-work 用同一运行账号操作。以下两处均相对 `%USERPROFILE%`，摘要为文件的 SHA-256。
+
+| 文件 | 路径 | SHA-256 |
+|---|---|---|
+| 已修复入口 | `.dsh\profiles\multica\node_modules\@multica-ai\dsh-runtime\dist\index.js` | `37c20164ca169ba8cd973db3479027d5cd731402688ac94f9c21d956b6d04485` |
+| 本次修改前的入口 | `.multica\integrations\dsh\backups\main-reasoning-fb15c6f62d8c\index.js` | `fb15c6f62d8c7deb7fbef4f45e4f3cac18fe0e6ec9e609cae960228f8477f216` |
+
+仅撤销本补丁时，先用 `Get-FileHash -Algorithm SHA256` 对照表中两项。两者匹配后，将备份复制到入口，运行 `node --check <入口路径>`，再核入口摘要等于备份。此操作恢复此前的适配器行为，Terra 的原故障可能复现。若已升级到另一版本，使用该次升级保存的配套版本和副本；将上表中的旧 JS 写入新版包会混用接口。本次已读回两个文件的摘要，生产回退未演练。
+
+项目 bank `multica-4-dot` 的文档 ID 为 `multica-win-work-quality-terra-xhigh-clou76-78`。
 
 ## 速度与 Token
 
@@ -352,3 +381,4 @@ multica runtime profile update 5e3fe5af-f04c-4238-be35-a2e1f8cd0aae --command-na
 | 2026-11-21 | 补入 CLOU-46～48 的 Kimi、OMP 角色独立身份实测、研究员 stdio 修复与两种反馈覆盖问题。 |
 | 2026-11-22 | 新增角色库入口和 CLOU-40 知识管理员案例复用验收，补明正文摘要的核验方法。 |
 | 2026-11-23 | 补入 win-work 四种原生子智能体的建角配置、父 Run 收齐结果的验收方法及隔离会话回执。 |
+| 2026-11-26 | 增补 CLOU-76～78 三名质量审核角色的 Terra / xhigh 主会话实测、DSH 适配器修复及升级复验与回退。 |
