@@ -2,6 +2,8 @@
 
 适用于腾讯云 VPS `/opt/multica` 的已有实例。使用 Compose project `multica`，组合官方 `docker-compose.selfhost.yml` 与本机 `docker-compose.easytier.yml`。应用更新分别重建 `backend`、`frontend`，数据库沿用 `pgvector/pgvector:pg17` 和现有两个卷 `multica_pgdata`、`multica_backend_uploads`。本手册以 2026-11-19 的 v0.10.0 → v0.11.0 升级为例。未来升级先核对应版本的发布说明、Compose 和数据库迁移。 [官方 v0.11.0 Compose](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/docker-compose.selfhost.yml) · [发布说明](https://github.com/multica-ai/multica/releases/tag/v0.11.0)
 
+日常升级按[项目升级规范](../AGENTS.md#multica-升级规范)准备目标 tag 和镜像，再在腾讯云运行 `sudo /opt/upgrade-multica.sh "$target_tag"`。脚本执行在途检查、备份、隔离迁移演练、应用切换和健康检查。现网版本以[最新升级回执](#升级回执)和容器读回为准。
+
 ## 部署约定
 
 | 项目 | 本实例约定 |
@@ -299,7 +301,20 @@ done < "$backup_dir/old-image-refs.approved"
 
 回切方案应列明旧官方镜像标签和摘要、独立恢复卷、数据库连接、上传挂载、私网端口、待停止的服务、恢复时点和验收人。镜像改回旧 tag 无法撤销数据库前向迁移。任何改写生产库、替换原卷或执行 down migration 的步骤均需单独核准。本手册保留原卷，不提供覆盖唯一数据库的默认恢复命令。
 
-## 2026-11-19 升级回执
+## 升级回执
+
+### 2026-11-26 升级回执
+
+北京时间 15:50，腾讯云 Multica 由 `v0.12.1` 升至 `v0.13.0`。官方 tag 经临时 SSH 转发拉取，提交为 `35b54a3742bb51bdf5ffa688655367ec98044862`。停服前在途队列已归零。[官方发布](https://github.com/multica-ai/multica/releases/tag/v0.13.0)
+
+| 项目 | 实测结果 |
+|---|---|
+| 前后端与配置 | backend/frontend 均为 `v0.13.0`，平台为 `linux/amd64`，镜像配置摘要均与官方 GHCR 一致。实际 Compose 等于官方 tag 中的文件，`.env` 的镜像标签已读回。 |
+| 数据库与恢复 | 原 PG17 容器健康，数据库和附件备份校验通过，独立数据库恢复与迁移演练通过。生产迁移数由 758 增至 779。备份保留在宿主私有目录。 |
+| 应用入口 | 环回和 EasyTier 入口的 API readiness 与 Web 均通过。从 mac-work 经私网访问，API 的 DB 和 migrations 均为 `ok`，Web 返回 HTTP 200。 |
+| 下游检查 | mac-work CLI 与运行中 Daemon、Skill 版本参考和 Vultr MCP 的测试结果见 [v0.13.0 差异与验证](../skills/multica-backend/references/cli-v0.13.0.md#本轮验证)。 |
+
+### 2026-11-19 升级回执
 
 以下结果由本轮腾讯云 SSH 执行端回传，验收时间为 2026-11-19 09:21（Asia/Shanghai）。
 

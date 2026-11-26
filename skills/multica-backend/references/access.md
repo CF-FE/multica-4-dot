@@ -1,6 +1,6 @@
 # Multica 认证、查询与操作
 
-REST 路由和服务端行为以腾讯云当前部署的 v0.11.0 为基线。mac-work CLI／Daemon v0.12.1 的适用范围和已验证差异见 [v0.12.1 CLI 差异与实测](cli-v0.12.1.md)。操作前核对目标 CLI 的 `multica version`、相关 `--help`、实际身份及服务端版本。[v0.11.0 固定源码](https://github.com/multica-ai/multica/commit/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8)
+腾讯云当前部署为 v0.13.0。操作前核对目标 CLI 的 `multica version`、相关 `--help`、实际身份及服务端版本。下文的固定源码链接随各条规则保留其取证版本。[v0.13.0 CLI 差异与验证](cli-v0.13.0.md) · [v0.12.1 历史实测](cli-v0.12.1.md)
 
 ## 选择调用身份
 
@@ -52,7 +52,7 @@ printf '/note\n\n%s\n' "$OBSERVED_RESULT" |
 
 ## 最小 REST 接口
 
-优先用已配置 CLI，长驻集成按需选择窄接口并投影字段。[v0.11.0 服务端路由](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/cmd/server/router.go)
+优先用已配置 CLI，长驻集成按需选择窄接口并投影字段。[v0.13.0 服务端路由](https://github.com/multica-ai/multica/blob/35b54a3742bb51bdf5ffa688655367ec98044862/server/cmd/server/router.go)
 
 | 请求 | 用途与证据边界 |
 | --- | --- |
@@ -71,6 +71,7 @@ printf '/note\n\n%s\n' "$OBSERVED_RESULT" |
 
 ## 状态、交接与评论
 
+- v0.13.0 操作阻塞关系前，读回未完成的阻塞项并核对解阻后的执行对象。Squad 交接先读回 `handoff_mode` 和成员角色。自动续跑与直接点名的边界见 [v0.13.0 CLI 差异](cli-v0.13.0.md)。
 - 用 `issue-status list` 取得状态 key 与类别，`project workflow get <project>` 和 `workflow get <workflow>` 核对实际步骤及 handler。工作流状态 handoff 需要任务属于项目。状态发生变更并进入配置步骤时可指派 handler 并自动启动。重复提交当前状态不会重新进入。手动指定 assignee 会保留显式选择。只迁项目默认不交接。若具体请求需要让迁入执行工作流步骤，先用 `GET .../workflow-handoff?project_id=...` 预览，再按固定版 API 以 `PUT /api/issues/{id}` 提交 `project_id` 和 `enter_workflow_step: true`。[交接决策](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/issue_workflow_entry.go#L19-L115) · [更新字段](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/issue.go#L3790-L3809)
 - `workflow handoff set` 可按项目复制工作流后再设置 handler。`project workflow set --dry-run` 可先核状态迁移，`--map old=new` 在存在不兼容状态时显式映射。内置 handler 没有“原执行者”选项，记名退回须从候选 Run 的 `agent_id`、交付评论来源等核对原执行者，并在获授权时一次更新 assignee 与返工状态。`--back` 给步骤定义回退目的状态，不能代替对执行者的核验及必要改派。
 - `issue assign/status/update --no-start` 仍会修改业务对象。需要触发执行时，检查响应的 `run_outcome` 中的 `status` 和 `reason_code`，`target_id` 对应指派对象，指派给 Squad 时为 Squad ID。回执仅随原写入响应返回。v0.11.0 单条指派、状态及修改命令会把合并、延期或阻止等未启动原因写到 stderr，`issue batch update` 表格逐条显示原因。写入没有派发决策、调用者无权调用指派对象或服务端版本较旧时，响应可能省略 `run_outcome`。缺少回执时将派发结果记为待确认，在权限范围内查同一 Issue 的 Run 核对实际执行对象和状态，避免重复派发。[CLI 回执处理](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/cmd/multica/cmd_issue_run_outcome.go) · [服务端派发回执](https://github.com/multica-ai/multica/blob/cb190810a659c1a61c4a86d9f6ecfc9df4b086d8/server/internal/handler/issue_trigger.go#L101-L144)

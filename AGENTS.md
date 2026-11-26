@@ -4,6 +4,15 @@
 
 G8 下发已授权任务、查询与回收反馈、从全局提出方案或受托起草 ADR，以及 Multica 内找人、解阻与决策时均遵循[职责与协作规范](skills/workspace-coordination/SKILL.md)。新工作区按现任协调员登记接入。
 
+## Multica 升级规范
+
+每次升级锁定一个已获准的官方 tag 和完整提交，按服务端、CLI／Daemon、Skill、MCP 逐项核对。服务端前后端与本轮升级的宿主以同一 Multica 版本为目标。分批升级时记录各处实际版本、兼容证据和补齐计划。MCP 记录自己的发布版本或提交，以及通过验收的 Multica 服务端版本。
+
+1. **服务端**。按[腾讯云升级手册](docs/tencent-upgrade.md)使用 `/opt/upgrade-multica.sh`。先核官方 tag、目标平台和已准备镜像的官方摘要。停服前核对在途 Run，强制切换须得到明确授权。备份并校验数据库、附件和配置，完成隔离恢复与迁移演练，再检查实际镜像、数据库与迁移状态、API readiness 和 Web 入口。
+2. **CLI 与 Daemon**。沿用宿主原安装方式。macOS Homebrew 使用[本地 CLI 升级脚本](scripts/upgrade-multica-cli.sh)。分别读回 CLI 和运行中 Daemon 的版本。重启前确认该运行时空闲，重启后核对工作区和新心跳。有实际领单验收授权时，沿既有验证卡核对 Run 终态、真实输出和回传。按[后端 Skill](skills/multica-backend/SKILL.md)操作。
+3. **Skill 与 MCP**。更新本轮观察到的部署基线、CLI 差异和现行引用，保留历史实测。MCP 对照目标版的 API 和授权差异，跑本仓库契约测试，并通过已部署 MCP 读回项目、Issue 和 Run。需要修改契约或封装已获准的新能力时，先隔离验证受影响的写入和回执，再按 [MCP 部署手册](deployment/multica-backend/README.md)发布到原部署主机。
+4. **回执**。在原升级记录写明各项目标版本、实际版本、检查结果和证据链接。将待验项与已验证项分别记录。腾讯云服务端回执统一追加到[升级手册](docs/tencent-upgrade.md#升级回执)，其他入口引用这份记录。
+
 ## unblock 版本兼容
 
 **unblock 复用宿主当前 Multica CLI，以所需能力和实际回执判定兼容。** 发布提交、实测版本仅用于追溯和回退。禁止以版本号、构建提交或版本白名单作为启动门槛，或为此另装旧版 CLI。升级时复验关键能力；发现接口变化，修复对应适配并保留缺项诊断。公子于 2026-11-21 确认。[复验步骤](docs/unblock-operations.md)

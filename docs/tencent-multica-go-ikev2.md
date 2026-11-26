@@ -13,7 +13,7 @@
 | 隧道目标 | `10.207.56.3/32`，只放行 TCP `3000,8080` |
 | Multica Go API 地址 | `http://10.207.56.3:8080` |
 | Multica Go Web 平台地址 | `http://10.207.56.3:3000` |
-| Multica | `v0.12.1`，前后端发布到回环和 EasyTier 地址，PostgreSQL 在 Compose 网络内 |
+| Multica | 前后端发布到回环和 EasyTier 地址，PostgreSQL 在 Compose 网络内。当前版本见[升级回执](tencent-upgrade.md#升级回执)。 |
 | VPN 认证 | 服务器证书由专用 CA 签发，手机以独立 EAP-MSCHAPv2 账号登录 |
 | 当前服务器证书 | SAN 为 `IP:43.143.70.108`，到期时间为 2027-11-24 22:33（北京时间） |
 
