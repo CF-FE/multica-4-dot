@@ -59,7 +59,22 @@ Mike 当前挂载四项 Skill：`workspace-coordination` 管交接与回程，`m
 
 有可复用角色时，先看它能否交付样本、是否接触过待审产物、权限是否覆盖任务。统一使用一种运行时可减少插件和升级维护，但 Windows 服务、独立审查与特定工具各有自己的验收条件。只有任务确实受数据位置、权限边界、工具或独立性约束时，才值得增加一个组合。以下判断有对应案例，速度、成本和模型质量尚无同题对照数据。
 
-**研究分析师换绑记录（2026-11-25）。** 沿用原 Agent、五项岗位 Skill 和既有独立决策身份。角色已移除 Windows Python 的 stdio 覆盖，改用已分配的工作区 `decision-service-agent`。CLOU-73 用两条相反的访谈反馈验证研究方法，并分别检查历史决定读回和项目记忆召回。配置已读回；新会话结果待原卡验收。[迁移验收原卡](http://10.207.56.3:3000/cloud-work/issues/CLOU-73)
+### 研究分析师迁移到 mac-work Codex（CLOU-73）
+
+**已通过。** 2026-11-25 至 26 日，研究分析师从 win-work Kimi 换到 mac-work Codex，沿用原 Agent、五项 Skill 和已有的独立决策身份。角色配置读回为 `gpt-6.2-astra / medium`。首轮实际读取了挂载的 `summarize-interview`，用两条互为反例的访谈区分观察与推断，并通过 `hindsight.recall` 在 `multica-4-dot` 召回相关记录，引用文档 `multica-hindsight-installation-report-20261120`。此项验证覆盖显式召回。[首轮研究与记忆回执](http://10.207.56.3:3000/cloud-work/issues/01a21213-c77d-7493-8908-6d72b820a99f#comment-01a21234-c52c-7137-90ae-9f1f1c878172)
+
+**为何同一服务返回 `not_found`。** 换主机后移除了指向 Windows Python 的 stdio 配置。Multica 后台登记了专属 MCP，首轮 Codex 会话却只找到共享工具。排查时切到共享入口，按原请求号和决定 ID 查询均返回 `not_found`。服务先按调用主体检索，再核项目及相关 bank 权限；操作同一个 URL 或知道准确 ID 都不足以读回另一主体的记录。[历史决定 CLOU-48](http://10.207.56.3:3000/cloud-work/issues/01a1fc36-1ef1-7d6d-aae3-d704032f796d)
+
+| 入口 | 服务端按谁的权限读 | CLOU-73 的结果 |
+|---|---|---|
+| `decision-service`（共享 OAuth） | 使用 GitHub 登录映射的调用主体。验收时该映射为 `decision-service-smoke`，其授权范围不含「Multica 运行时验证」项目。 | 服务可达，但查不到研究员专属历史决定。 |
+| `decision-service-agent`（角色独立身份） | 使用随研究员 Run 注入的凭据，对应主体 `multica-agent-11c62b19-95e8-428d-bfe7-67d9f760bae7`，已获准读取原项目记录。 | 换到 Mac 后仍能以原身份读回 CLOU-48 的同一决定。 |
+
+**修复与复验。** 仅在研究分析师上启用专属条目、停用共享条目，将 Codex 的 `bearer_token_env_var` 指向现有 `DECISION_AGENT_TOKEN`，共享 OAuth 权限保持原范围。沿 CLOU-73 开新会话，先核任务配置及原生工具目录，再由角色调用 `decision-service-agent.get_decision` **一次**，唯一参数为 `request_id=role-dedicated-research-20261121-v1`。排查类似问题时，工具缺席先查会话挂载，认证失败查角色凭据注入，`not_found` 先对照实例、调用主体和原记录归属。
+
+**验收依据。** Run `01a2168b-589c-7147-8d5c-abbb0b915e41` 已完成。按同一调用核对工具记录 seq 21/22 与原始回包，决定 ID 为 `a4eea797-995b-40a7-ba69-2256b07bb79f`，候选为 `conflict-triage-first`，项目为 `475b0f30-b363-428f-85ac-d95fc12fa1ee`，全部与历史原件一致。发起者已验收，原卡状态为 `done`。本次决策验证范围为已有决定的只读接续。[发起者验收回执](http://10.207.56.3:3000/cloud-work/issues/01a21213-c77d-7493-8908-6d72b820a99f#comment-01a2168e-339c-7378-b3bd-b4b53296abbc)
+
+项目 bank `multica-4-dot` 的文档 ID 为 `multica-research-mac-codex-decision-identity-clou73`。
 
 ## 两端实际登记的运行时
 
@@ -406,3 +421,4 @@ multica runtime profile update 5e3fe5af-f04c-4238-be35-a2e1f8cd0aae --command-na
 | 2026-11-23 | 补入 win-work 四种原生子智能体的建角配置、父 Run 收齐结果的验收方法及隔离会话回执。 |
 | 2026-11-26 | 增补 CLOU-76～78 三名质量审核角色的 Terra / xhigh 主会话实测、DSH 适配器修复及升级复验与回退。 |
 | 2026-11-26 | 补入开发团队换任、四人分工及 CLOU-79 的小队派发、成员实现与队长复验。 |
+| 2026-11-26 | CLOU-73 换绑验收通过，补入 mac-work Codex 的共享 OAuth 与研究员独立身份排障、原决定只读回执。 |
