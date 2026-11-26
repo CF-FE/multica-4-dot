@@ -20,8 +20,23 @@
 | [插件能力清单](docs/plugin-inventory.md) | MCP、Skills、权限、数据契约与未来目录 |
 | [分阶段验证方案](docs/validation-plan.md) | 验收门槛、故障注入、回滚与待决事项 |
 | [win-work 项目记忆接入](docs/win-work-hindsight.md) | OMP、DSH 与 Hermes 的 Hindsight 项目绑定、召回、留存和验证 |
+| [本地 Multica CLI 升级](#本地-multica-cli-升级) | macOS 上的 Homebrew CLI 版本检查与升级 |
 | [腾讯云升级手册](docs/tencent-upgrade.md) | Compose 版本更新、数据库与附件备份、验收、旧镜像清理和迁移后的回退 |
 | [腾讯云 Multica Go 与 iPhone IKEv2 运维手册](docs/tencent-multica-go-ikev2.md) | iPhone 私网接入、从零重建、真机验收、证书轮换和回退 |
 | [后端操作 Skill](skills/multica-backend/SKILL.md) | [认证与调用](skills/multica-backend/references/access.md) · [v0.12.1 CLI 差异与实测](skills/multica-backend/references/cli-v0.12.1.md) · [v0.11.0 CLI 总表](skills/multica-backend/references/cli-v0.11.0.md) · [v0.10.0 历史参考](skills/multica-backend/references/cli-v0.10.0.md) · [v0.9.0 历史参考](skills/multica-backend/references/cli-v0.9.0.md) |
 
 基础架构与后端接入保留 v0.1、v0.2 的历史提案。2026-11-20 已采纳的工作流、通知和跨端汇报决策见[实施核对](docs/workflow-reporting.md)。本库不存真实地址、任务内容、凭据或私有运行配置。
+
+## 本地 Multica CLI 升级
+
+适用于 macOS 上通过 Homebrew 安装的 Multica CLI。在仓库根目录运行以下命令。[升级脚本](scripts/upgrade-multica-cli.sh)
+
+```bash
+# 只读检查当前 CLI 版本、官方 tap 同步状态和本地配方版本
+./scripts/upgrade-multica-cli.sh --check
+
+# 更新 Multica tap、升级 CLI 并显示升级后的版本
+./scripts/upgrade-multica-cli.sh
+```
+
+脚本保留旧版 CLI。系统启用静态 PAC 时，脚本使用其首选路由。使用按域名分流的 PAC 时，可通过 `MULTICA_UPGRADE_PROXY` 指定本次运行的代理地址。
