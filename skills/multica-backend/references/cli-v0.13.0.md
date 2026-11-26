@@ -27,7 +27,7 @@
 
 | 项目 | 2026-11-26 证据 |
 |---|---|
-| 腾讯云服务端 | 前后端均为 `v0.13.0`，API readiness 和 Web 入口通过。详见[部署回执](../../../docs/tencent-upgrade.md#2026-11-26-升级回执)。 |
+| 腾讯云服务端 | 前后端均为 `v0.13.0`，API readiness 和 Web 入口通过。[部署回执](https://github.com/CF-FE/multica-4-dot/blob/af91454f3938581d015b1060c2fdd5859cac127c/docs/tencent-upgrade.md#2026-11-26-升级回执) |
 | mac-work CLI 与 Daemon | CLI 实读为 `0.13.0`。运行中 Daemon 的 `cli_version` 为 `0.13.0`，读回 1 个工作区和 0 个在途任务。本轮原卡领单与回传待验，既有实单见 [v0.12.1 历史记录](cli-v0.12.1.md#mac-work-v0121-与腾讯云-v0110)。 |
 | Vultr MCP | 仓库 MCP 包版本为 `0.1.0`，本地契约与网关测试共 87 项通过。部署中的 MCP 已对腾讯云读通项目列表、项目、Issue、指定 Run 与 Run 列表。Vultr 发布提交和现网写入行为待验。当前工具的 Issue 投影与更新参数没有暴露阻塞关系，也未提供 Squad 模式管理。 |
 | 新功能写入 | 已核对目标 CLI 帮助和官方固定版文档。阻塞变更的自动派发、Squad 实际交接及回执须在有授权的业务卡或隔离实例验证。 |

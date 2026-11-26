@@ -10,8 +10,9 @@ G8 下发已授权任务、查询与回收反馈、从全局提出方案或受�
 
 1. **服务端**。按[腾讯云升级手册](docs/tencent-upgrade.md)使用 `/opt/upgrade-multica.sh`。先核官方 tag、目标平台和已准备镜像的官方摘要。停服前核对在途 Run，强制切换须得到明确授权。备份并校验数据库、附件和配置，完成隔离恢复与迁移演练，再检查实际镜像、数据库与迁移状态、API readiness 和 Web 入口。
 2. **CLI 与 Daemon**。沿用宿主原安装方式。macOS Homebrew 使用[本地 CLI 升级脚本](scripts/upgrade-multica-cli.sh)。分别读回 CLI 和运行中 Daemon 的版本。重启前确认该运行时空闲，重启后核对工作区和新心跳。有实际领单验收授权时，沿既有验证卡核对 Run 终态、真实输出和回传。按[后端 Skill](skills/multica-backend/SKILL.md)操作。
-3. **Skill 与 MCP**。更新本轮观察到的部署基线、CLI 差异和现行引用，保留历史实测。MCP 对照目标版的 API 和授权差异，跑本仓库契约测试，并通过已部署 MCP 读回项目、Issue 和 Run。需要修改契约或封装已获准的新能力时，先隔离验证受影响的写入和回执，再按 [MCP 部署手册](deployment/multica-backend/README.md)发布到原部署主机。
-4. **回执**。在原升级记录写明各项目标版本、实际版本、检查结果和证据链接。将待验项与已验证项分别记录。腾讯云服务端回执统一追加到[升级手册](docs/tencent-upgrade.md#升级回执)，其他入口引用这份记录。
+3. **Skill**。更新仓库里的部署基线、CLI 差异和现行引用，保留历史实测。按[平台同步步骤](skills/multica-backend/references/access.md#管理员挂载技能)用原 Skill ID 更新目标 Multica 工作区中的同名 Skill。读回线上版本、正文、所需参考文件和既有 Agent 挂载，再确认这项完成。
+4. **MCP**。对照目标版的 API 和授权差异，跑本仓库契约测试，并通过已部署 MCP 读回项目、Issue 和 Run。需要修改契约或封装已获准的新能力时，先隔离验证受影响的写入和回执，再按 [MCP 部署手册](deployment/multica-backend/README.md)发布到原部署主机。
+5. **回执**。在原升级记录写明各项目标版本、实际版本、检查结果和证据链接，分别记录仓库 Skill 与平台 Skill 的同步结果。腾讯云服务端回执统一追加到[升级手册](docs/tencent-upgrade.md#升级回执)，其他入口引用这份记录。
 
 ## unblock 版本兼容
 

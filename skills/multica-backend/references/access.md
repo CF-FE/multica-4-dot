@@ -81,4 +81,8 @@ printf '/note\n\n%s\n' "$OBSERVED_RESULT" |
 
 ## 管理员挂载技能
 
-经授权可用 `skill import --file` 导入含 `SKILL.md` 及所需 `references/` 的包。已有同名技能先核其 ID 和来源，再按需用 `skill update` 与 `skill files upsert` 更新对应文件。通过 `agent skills list` 核实当前分配，再用 `agent skills add --skill-ids <id>` 增量挂载并读回，`set` 会替换全部。配置、技能挂载与运行权限分别核验。保留现有运行时与凭据来源，首次真实执行按具体任务授权。[v0.11.0 CLI 命令总表](cli-v0.11.0.md)
+1. 同步已有 Skill 时先用 `skill get <id> --with-content` 读回目标工作区、原 Skill ID、正文、文件内容和 revision，并核对既有 Agent 挂载。发现线上有独立修改时，先按原版本对照并合并。
+2. 先用 `skill files upsert <id> --path <path> --content-file <file> --base-revision <revision>` 更新新增或变更的引用文件，再用 `skill update <id> --content-file <SKILL.md> --base-revision <revision>` 更新正文。每次写入使用刚读回的 revision。遇冲突或响应不明时，先读回线上状态再继续。
+3. 同一 Skill ID 下读回 `metadata.version`、正文及所需引用文件，逐一对照仓库。用 `agent skills list <agent-id>` 核对原挂载及启用状态，分别记录仓库版本与平台回执。
+
+首次新增经授权可用 `skill import --file` 导入含 `SKILL.md` 及所需 `references/` 的包。新增挂载时用 `agent skills add --skill-ids <id>` 并读回，`set` 会替换全部。配置、技能挂载与运行权限分别核验。首次真实执行按具体任务授权。[CLI 命令总表](cli-v0.11.0.md)

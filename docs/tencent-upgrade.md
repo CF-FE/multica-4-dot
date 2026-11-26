@@ -313,6 +313,7 @@ done < "$backup_dir/old-image-refs.approved"
 | 数据库与恢复 | 原 PG17 容器健康，数据库和附件备份校验通过，独立数据库恢复与迁移演练通过。生产迁移数由 758 增至 779。备份保留在宿主私有目录。 |
 | 应用入口 | 环回和 EasyTier 入口的 API readiness 与 Web 均通过。从 mac-work 经私网访问，API 的 DB 和 migrations 均为 `ok`，Web 返回 HTTP 200。 |
 | 下游检查 | mac-work CLI 与运行中 Daemon、Skill 版本参考和 Vultr MCP 的测试结果见 [v0.13.0 差异与验证](../skills/multica-backend/references/cli-v0.13.0.md#本轮验证)。 |
+| 平台 Skill | 北京时间 16:25，`cloud-work` 的原 `multica-backend` 从 `0.12.1` 同步到 `0.13.0`，线上 revision 为 `4`。已读回正文与六个参考文件并逐一对照仓库，五个既有 Agent 挂载均启用。 |
 
 ### 2026-11-19 升级回执
 
