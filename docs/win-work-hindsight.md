@@ -91,6 +91,18 @@ profile 用 `pnpm patchedDependencies` 固定兼容改动。补丁只修改该�
 
 若公子要求一条留存有稳定文档 ID 和读回回执，使用已获授权、能指定 `document_id` 的 Hindsight 写入入口。该版本的原生 `hindsight_retain` 只接收内容、上下文和标签，返回简短成功文本。 [Hermes 手动留存工具](https://github.com/NousResearch/hermes-agent/blob/v2026.7.20/plugins/memory/hindsight/__init__.py#L1560-L1588)
 
+## 知识管理员按原卡读写
+
+win-work 知识管理员专用的 `KnowledgeHermes.exe` 在启动受管 Hermes 时，将本 Run 私有 YAML 的 Hindsight 条目指向 `~/.multica/integrations/hindsight/knowledge_project_memory.py`。当前部署采用共享 Windows 账号，宿主管理员能读取服务凭据。正常记忆工具在每次调用前用 Daemon 注入的 Run 身份向腾讯 Multica 查询原 Issue，再用其项目 UUID 查 `omp-project-banks.json` 中本工作区的既有登记。自定义工作目录同样适用。新项目沿该登记增加唯一的项目与 bank 对应关系。外部 provider 的首轮自动召回与这里的显式工具分开验收。
+
+- `recall`、`get_document` 允许读当前 bank，以及已有跨库只读授权。项目未登记、角色或 Run 无法核实，暂停该次记忆操作。
+- 写之前按原 Issue、主题、来源查重，然后读候选原文。相同内容沿用原 ID；有增量时传原文 UTF-8 摘要、增量及来源，入口重读并核对摘要后追加。确认无对应文档才以稳定 ID 和 `expected_sha256=new` 新建。语义查重由知识管理员根据召回结果判断。多方同时编辑同一原件时沿同一原卡串行更新。
+- 保留一次意图的 `operation_id`，结果未知时查原操作；完成后读回原 ID，对照旧正文、增量及最终摘要。未查清的操作保留待确认。
+
+升级后在新 Run 验证本库召回与原件读回、已授权跨库读、查重、原件补漏与读回。用隔离用例验证跨库写入未发往上游、已有 ID 不被误建、原文变更会触发重新核对、重放保持同一份原件。启动器补丁和桥代码在 [deployment/hindsight](../deployment/hindsight)。回退时等待该角色空闲，从 `~/.multica/integrations/hermes/knowledge-decision/` 的 `KnowledgeHermes.before-cl68.exe` 与同名 `.cs` 备份恢复原入口，用新会话读回原工具清单。已保存的项目原件沿原 ID 保留。
+
+2026-11-28，CLOU-68 新 Run 从自定义工作目录 `D:\fanren-workspace` 成功查重，沿 G8 原文档 `fanren-clou-68-guanghan-closeout-retrospective-20261128` 只追加 08-10 月仙子选角勘误。异步操作完成后按原 ID 读回，原文前缀和追加后的完整正文 SHA-256 均已复算；同 Run 也从 `multica-4-dot` 读回既有案例。早一次探针误用默认工作目录寻找标记，正式入口改为沿服务端 Run 找原卡。[知识管理员验收回执](http://10.207.56.3:3000/cloud-work/issues/01a211a7-8161-75eb-934d-d0157884b429#comment-01a21fcd-1872-7a14-9095-5dd8ede26a7e)
+
 ## 跨 bank 只读桥
 
 OMP 的 Hindsight MCP 条目、DSH 的 `project-memory` 和 Hermes 的 `mcp_servers.hindsight` 共用 Windows 本机 stdio 入口 `~/.multica/integrations/hindsight/read-only-memory.py`。它只暴露 `get_document` 和 `recall`，要求显式传入已获准的 `bank_id`，拒绝 `default` 和写入调用。`get_document` 同时传稳定的 `document_id`，`recall` 传具体问题。桥读到的其他库证据按来源引用，当前原生后端仍写入原绑定项目。2026-11-18 桥 SHA-256 为 `c6e65640bc9f258f566e1869035d4a0f318956ab903dc72c867b86344615ed38`。

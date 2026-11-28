@@ -1,0 +1,29 @@
+--- a/KnowledgeHermes.cs
++++ b/KnowledgeHermes.cs
+@@ -140,6 +140,26 @@
+             };
+             int insertion = maps[0].Index + maps[0].Length;
+             updated = updated.Insert(insertion, String.Join(eol, rows));
++        }
++        // Only touches the memory entry of this verified task-private YAML.
++        const string oldMemory = @"\hermes-read-only-memory.py";
++        const string newMemory = @"\knowledge_project_memory.py";
++        int start = updated.IndexOf(oldMemory, StringComparison.OrdinalIgnoreCase);
++        if (start >= 0)
++        {
++            if (updated.IndexOf(oldMemory, start + 1, StringComparison.OrdinalIgnoreCase) >= 0)
++                throw new InvalidOperationException("Ambiguous Hindsight configuration.");
++            string tail = updated.Substring(start + oldMemory.Length);
++            string envHeader = eol + "        env:" + eol;
++            if (!tail.StartsWith(envHeader, StringComparison.Ordinal))
++                throw new InvalidOperationException("Unexpected Hindsight environment mapping.");
++            string[] names = { "MULTICA_AGENT_ID", "MULTICA_WORKSPACE_ID", "MULTICA_TASK_ID",
++                               "MULTICA_TASK_CONFIG_ROOT", "MULTICA_TOKEN" };
++            var refs = new StringBuilder();
++            foreach (string key in names)
++                refs.Append("            " + key + ": '${" + key + "}'" + eol);
++            updated = updated.Substring(0, start) + newMemory + envHeader + refs +
++                      tail.Substring(envHeader.Length);
+         }
+         if (current == updated)
+             return;

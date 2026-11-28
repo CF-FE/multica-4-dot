@@ -43,6 +43,8 @@ Mike 当前挂载四项 Skill：`workspace-coordination` 管交接与回程，`m
 
 **知识管理员的启动入口。** 2026-11-21 起，专属 profile 经 `KnowledgeHermes.exe` 启动原受管 Hermes，详见[独立决策身份](#hermes-的任务私有配置)。此前 CLOU-25 使用 Hermes 0.23.3，由岗位专属 Multica 运行时直接调用 `%LOCALAPPDATA%\hermes\bin\hermes.exe acp`。旧 checkout 的 `venv\Scripts\hermes.exe` 曾连续两次在初始化时无法导入 `ArgsKwargs`；同机受管启动器通过 ACP 握手。原卡新 Run `01a1f85f-a882-7805-8132-408f187f61c5` 核对了 CLOU-16、CLOU-23，调用 `mcp__hindsight__get_document` 按稳定 ID 取回原文并回报原卡，独立读回的 SHA-256 一致。此次使用显式读取；新会话的派生配置将外部 `memory.provider` 留空，首轮自动注入只在旧版本验收中得到验证。[换绑验收 CLOU-25](http://10.207.56.3:3000/cloud-work/issues/CLOU-25)
 
+**知识管理员按原卡使用项目记忆。** 专属启动器在任务私有配置中加载四个 Hindsight 工具。每次读写均以当前 Run 身份向 Multica 核对原 Issue、工作区和项目 UUID，再查 win-work 现有项目登记。默认读本库，显式跨库沿用获准只读范围，留存仅写原卡项目库。同一主题先召回、再按稳定 ID 读原文；已覆盖就引用，有出处的遗漏追加到原 ID。异步提交按原操作号查询，最后按原文档 ID 核对正文与摘要。角色依公子选择继续使用共享 Windows 账号，该约束在角色的正常记忆工具入口执行。[接入、复验及回退](win-work-hindsight.md#知识管理员按原卡读写)
+
 **已退役的 win-work Hermes 验证智能体。** 2026-11-20 17:53（北京时间），按公子要求归档「Hermes 默认模型验证（win-work）」，并核对其已从工作区活动列表移除。旧 ID `ea0882b6-f4b7-45be-91ab-7993f2df28cc` 的 6 个历史 Run 仍可读取（4 完成、1 失败、1 取消）。CLOU-4、12、16、19、23 均已结项，相关 Issue 没有启用中的唤醒。CLOU-16 曾验证正常 ACP 首轮记忆注入、按 ID 读取及本库留存，CLOU-19 的单行留存已在长度限制内重交并读回。CLOU-4 在 daemon 重启后自动重试，原任务未能交付；后来成功的是单独新开的会话。升级后仍需受控验证中断恢复，并复核 CLOU-12 的三处源码适配及备份。[故障原卡](http://10.207.56.3:3000/cloud-work/issues/CLOU-4) · [接入验收](hindsight-installation-report-2026-11-20.md)
 
 ## 从角色要交付的结果开始
