@@ -22,13 +22,13 @@ class LeaderUpdates(IsolatedAsyncioTestCase):
         self.reply_lost = False
         self.run_state = "running"
 
-    def get(self, path):
-        if path.startswith("squads/"):
-            team = "dev" if path.endswith(si.ROUTES["dev"][0]) else "qa"
+    def get(self, *args):
+        if args[:2] == ("squad", "get"):
+            team = "dev" if args[2] == si.ROUTES["dev"][0] else "qa"
             return dict(id=si.ROUTES[team][0], leader_id=team+"-lead", workspace_id=si.WORKSPACE)
-        if path.endswith("/comments"):
+        if args[:3] == ("issue", "comment", "list"):
             return [self.row]
-        if "/task-runs?" in path:
+        if args[:2] == ("issue", "runs"):
             return [dict(id="run", agent_id="dev-lead", issue_id="card", workspace_id=si.WORKSPACE, status=self.run_state)]
         return dict(id="card", project_id="business", workspace_id=si.WORKSPACE)
 

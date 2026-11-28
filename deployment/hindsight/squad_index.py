@@ -9,23 +9,17 @@ from pathlib import Path
 import re
 import runpy
 import sqlite3
+import subprocess
 import sys
-from urllib.request import build_opener, HTTPRedirectHandler, ProxyHandler, Request
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 BANK = "multica-4-dot"
 WORKSPACE = "e25be43b-82b6-419d-9085-bb5c5700b1af"
-ORIGIN = "http://10.207.56.3:8080"
 ROUTES = {
     "dev": ("1ea4aac9-ebdf-407e-9696-b471cb89d9bd", "dev-squad-cross-project-engineering-reuse"),
     "qa": ("a6e2a426-e1d8-4e2d-ae90-118567d5f536", "quality-squad-review-methods"),
 }
 PREFIX = "/note\n\nsquad-index-update/v1 "
-
-
-class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self, *args):
-        return None
 
 
 def require(ok, message):
@@ -39,13 +33,13 @@ def digest(text):
 
 def scope(team, issue, agent, task, get):
     squad, doc = ROUTES[team]
-    appointment = get("squads/" + squad)
+    appointment = get("squad", "get", squad)
     require(appointment.get("id") == squad and appointment.get("workspace_id") == WORKSPACE
             and appointment.get("leader_id") == agent, "Current squad leader required.")
-    card = get("issues/" + issue)
+    card = get("issue", "get", issue)
     require(card.get("id") == issue and card.get("workspace_id") == WORKSPACE
             and card.get("project_id"), "Project-bound original Issue required.")
-    runs = get("issues/" + issue + "/task-runs?scope=issue&view=timeline")
+    runs = get("issue", "runs", issue, "--active")
     require(any(r.get("id") == task and r.get("agent_id") == agent and r.get("issue_id") == issue
                 and r.get("workspace_id") == WORKSPACE and r.get("status") == "running" for r in runs),
             "No matching active Run on this Issue.")
@@ -91,7 +85,7 @@ async def maintain(team, issue, note, agent, task, get, upstream, ledger):
     before = old["original_text"]
     if note is None:
         return dict(target, original_text=before, sha256=digest(before))
-    data = intent(get("issues/" + issue + "/comments"), issue, note, agent, task, team)
+    data = intent(get("issue", "comment", "list", issue), issue, note, agent, task, team)
     delta = data["addition"].strip()
     op = str(uuid5(NAMESPACE_URL, f"{WORKSPACE}/{doc}/{note}"))
     # Reserve this document before submission. An unknown response keeps the reservation.
@@ -153,13 +147,14 @@ def main():
     require(env.get("MULTICA_WORKSPACE_ID") == WORKSPACE and env.get("MULTICA_TOKEN", "").startswith("mat_"),
             "Use the workspace's injected Run identity.")
     agent, task = (str(UUID(env[k])) for k in ("MULTICA_AGENT_ID", "MULTICA_TASK_ID"))
-    opener = build_opener(ProxyHandler({}), NoRedirect())
+    cli = Path(env["MULTICA_CLI_PATH"])
+    require(cli.is_absolute() and cli.is_file(), "The injected Multica CLI is required.")
 
-    def get(path):
-        req = Request(ORIGIN + "/api/" + path, headers={"Authorization": "Bearer " + env["MULTICA_TOKEN"],
-                                                       "X-Workspace-ID": WORKSPACE})
-        with opener.open(req, timeout=10) as response:
-            return json.load(response)
+    def get(*args):
+        result = subprocess.run([str(cli), "--workspace-id", WORKSPACE, *args, "--output", "json"],
+                                capture_output=True, timeout=20)
+        require(result.returncode == 0, "Multica CLI read failed: " + " ".join(args[:2]))
+        return json.loads(result.stdout.decode("utf-8-sig"))
 
     client = runpy.run_path(str(Path.home() / ".kimi-code/hindsight/project_memory.py"))
     ledger = Path(__file__).resolve().with_name("squad-index-pending.sqlite")
