@@ -7,6 +7,7 @@
 | 文档 | 内容 |
 |---|---|
 | [项目交付与解阻方案图解](docs/share-doc/README.md) | 一张总图看架构与交付全程，一张详图看遇阻后由谁续办，附隔离验收证据。 |
+| [小队专精建设指引](docs/squad-specialization.md) | 建队指令模板、两队取舍实例、首单验证与原卡回填。 |
 | [开发小队工程复用索引](docs/development-reuse.md) | 按问题找组件、最短示例、已验证的项目和适用边界。 |
 | [质量小队审核方法索引](docs/quality-review-methods.md) | 按原卡问题查交付物核验、缺陷复验和验收范围。 |
 | [Multica 角色库](docs/role-library.md) | 工作区负责人按交付物选用岗位模板，核对已有角色、职责和首单验收。 |
