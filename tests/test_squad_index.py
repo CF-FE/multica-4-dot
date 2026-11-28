@@ -1,6 +1,4 @@
 import json
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from unittest import IsolatedAsyncioTestCase
 
 from deployment.hindsight import squad_index as si
@@ -8,9 +6,6 @@ from deployment.hindsight import squad_index as si
 
 class LeaderUpdates(IsolatedAsyncioTestCase):
     def setUp(self):
-        directory = TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        self.ledger = Path(directory.name) / "ledger"
         self.original = "previous evidence"
         self.note = "note"
         self.row = {"id": self.note, "issue_id": "card", "source_task_id": "run", "author_type": "agent",
@@ -37,14 +32,15 @@ class LeaderUpdates(IsolatedAsyncioTestCase):
             return self.doc, False
         if tool == "retain":
             self.writes.append(args)
-            self.doc.update(original_text=args["content"], document_metadata=args["metadata"])
+            self.assertEqual(args["update_mode"], "append")
+            self.doc.update(original_text=self.doc["original_text"]+"\n"+args["content"], document_metadata=args["metadata"])
             if self.reply_lost:
                 raise TimeoutError("lost response")
             return {"operation_id": args["operation_id"]}, False
-        return {"operation_id": args["operation_id"], "status": "completed"}, False
+        return {"operation_id": args["operation_id"], "status": "completed" if self.writes else "not_found"}, False
 
     def apply(self, team="dev", agent="dev-lead"):
-        return si.maintain(team, "card", self.note, agent, "run", self.get, self.upstream, self.ledger)
+        return si.maintain(team, "card", self.note, agent, "run", self.get, self.upstream)
 
     async def test_current_appointment_and_note_scope(self):
         for team, agent in [("qa", "dev-lead"), ("dev", "old-lead")]:
@@ -75,16 +71,16 @@ class LeaderUpdates(IsolatedAsyncioTestCase):
 
     async def test_update_and_replay(self):
         self.assertEqual((await self.apply())["status"], "completed")
-        self.assertEqual((await self.apply())["status"], "already_covered")
+        self.assertEqual((await self.apply())["status"], "completed")
         self.assertEqual(len(self.writes), 1)
         w = self.writes[0]
         self.assertEqual((w["bank_id"],w["document_id"],w["content"]),
-                         (si.BANK,si.ROUTES["dev"][1],self.original+"\n\nnew evidence"))
+                         (si.BANK,si.ROUTES["dev"][1],"new evidence"))
         self.assertEqual((w["tags"], w["metadata"]["original"], w["context"]), (["existing"], "kept","source context"))
 
     async def test_unknown_submission_reconciles_before_any_new_write(self):
         self.reply_lost = True
         with self.assertRaises(TimeoutError):
             await self.apply()
-        self.assertEqual((await self.apply())["status"], "already_covered")
+        self.assertEqual((await self.apply())["status"], "completed")
         self.assertEqual(len(self.writes), 1)
