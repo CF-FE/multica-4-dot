@@ -8,6 +8,7 @@
 |---|---|
 | [项目交付与解阻方案图解](docs/share-doc/README.md) | 一张总图看架构与交付全程，一张详图看遇阻后由谁续办，附隔离验收证据。 |
 | [开发小队工程复用索引](docs/development-reuse.md) | 按问题找组件、最短示例、已验证的项目和适用边界。 |
+| [质量小队审核方法索引](docs/quality-review-methods.md) | 按验收问题查同版实物核验、缺陷定点复审和证据边界判断。 |
 | [Multica 角色库](docs/role-library.md) | 工作区负责人按交付物选用岗位模板，核对已有角色、职责和首单验收。 |
 | [工作区 PowerShell 签名流水线](deployment/workspace-signing/README.md) | cloud-work 各项目在原卡申请内部签名，腾讯签发，win-work 以当前运行账号验签。 |
 | [Multica Backend MCP 部署、配置与升级手册](deployment/multica-backend/README.md) | 首次部署、查看现网、改后端地址、新增实例、换 PAT、MCP 换版回退，以及跟进腾讯云 Multica 升级。 |
